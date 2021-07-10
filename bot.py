@@ -30,7 +30,8 @@ async def on_message(message):
     if message.author == client.user:
         return
 
-    if message.content.startswith('f.calendar'):
+    if message.content.startswith('f.calendar') and \
+            not discord.utils.get(message.author.roles, name="Administrator") is None:
         global CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID
         msg_sent = await message.channel.send('Fetching server calendar...')
 
@@ -38,6 +39,8 @@ async def on_message(message):
         CALENDAR_MESSAGE_ID = msg_sent.id
         google_calendar.update_calendar_message_id(CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID)
         await update_server_calendar_once_only()
+    else:
+        await message.channel.send('[PERMISSION] cannot fetch server calendar.')
 
 @client.event
 async def update_server_calendar():
