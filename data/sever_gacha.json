@@ -1,0 +1,49 @@
+{
+  "servants": {
+    "001": {
+      "name": "name",
+      "class": "class",
+      "alias": "alias",
+      "gender": "gender",
+      "born": "born",
+      "died": "died",
+      "height": "height",
+      "weight": "weight",
+      "nationality": "nationality",
+      "alignment": "alignment",
+      "params": {
+        "str": "A",
+        "end": "A",
+        "agi": "A",
+        "man": "A",
+        "luc": "A",
+        "np": "A"
+      },
+      "cskill": {
+        "skillname1": "A",
+        "skillname2": "A",
+        "skillname3": "A"
+      },
+      "pskill": {
+        "skillname1": "A",
+        "skillname2": "A",
+        "skillname3": "A"
+      },
+      "np": {
+        "npname1": "A+",
+        "npname2": "A"
+      },
+      "description": "Description",
+      "thumbnail": "URL",
+      "pulled": 0
+    }
+  },
+  "ces": {
+    "001": {
+      "name": "name",
+      "season": 1,
+      "description": "Description",
+      "pulled": 0
+    }
+  }
+}
