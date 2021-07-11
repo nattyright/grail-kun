@@ -29,6 +29,8 @@ SSR_CE_UP = 0
 SR_CE_UP = 0
 R_CE_UP = 0
 
+RATES = {'SSR' : {'servant': 0, 'ce': 0}, 'SR': {'servant': 0, 'ce': 0}, 'R': {'servant': 0, 'ce': 0}}
+
 #get banner data
 def get_banner_data(banner_name):
     with open("data/fgo_gacha.json", "r", encoding="utf-8") as to_read:
@@ -40,6 +42,7 @@ def get_banner_data(banner_name):
         global SSR_CE_UP
         global SR_CE_UP
         global R_CE_UP
+        global RATES
 
         BANNER_DATA = json.load(to_read)[banner_name]
         # rates for rate-up and non-rate servants
@@ -50,6 +53,13 @@ def get_banner_data(banner_name):
         SSR_CE_UP = BANNER_DATA['SSR']['ce']['rate'] / 0.04
         SR_CE_UP = BANNER_DATA['SR']['ce']['rate'] / 0.12
         R_CE_UP = BANNER_DATA['R']['ce']['rate'] / 0.4
+
+        RATES['SSR']['servant'] = SSR_SERVANT_UP
+        RATES['SR']['servant'] = SR_SERVANT_UP
+        RATES['R']['servant'] = R_SERVANT_UP
+        RATES['SSR']['ce'] = SSR_CE_UP
+        RATES['SR']['ce'] = SR_CE_UP
+        RATES['R']['ce'] = R_CE_UP
         #print(SSR_SERVANT_UP, SR_SERVANT_UP, R_SERVANT_UP, SSR_CE_UP, SR_CE_UP, R_CE_UP)
 
 with open("data/fgo_servant.json", "r", encoding="utf-8") as to_read:
@@ -81,7 +91,7 @@ def get_random_num_whole(range):
 def summon_from_pool(card_type, card_rank, rand):
     rate = 0
     for i in range(len(BANNER_DATA[card_rank][card_type]['up'])):
-        rate += BANNER_DATA[card_rank][card_type]['rate']
+        rate += RATES[card_rank][card_type]
         if rand < rate:
             return BANNER_DATA[card_rank][card_type]['up'][i]
 
