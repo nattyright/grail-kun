@@ -43,14 +43,14 @@ def get_banner_data(banner_name):
 
         BANNER_DATA = json.load(to_read)[banner_name]
         # rates for rate-up and non-rate servants
-        SSR_SERVANT_UP = BANNER_DATA['SSR']['servant']['rate']
-        SR_SERVANT_UP = BANNER_DATA['SR']['servant']['rate']
-        R_SERVANT_UP = BANNER_DATA['R']['servant']['rate']
+        SSR_SERVANT_UP = BANNER_DATA['SSR']['servant']['rate'] / 0.01
+        SR_SERVANT_UP = BANNER_DATA['SR']['servant']['rate'] / 0.03
+        R_SERVANT_UP = BANNER_DATA['R']['servant']['rate'] / 0.4
         # rates for rate-up and non-rate ces
-        SSR_CE_UP = BANNER_DATA['SSR']['ce']['rate']
-        SR_CE_UP = BANNER_DATA['SR']['ce']['rate']
-        R_CE_UP = BANNER_DATA['R']['ce']['rate']
-
+        SSR_CE_UP = BANNER_DATA['SSR']['ce']['rate'] / 0.04
+        SR_CE_UP = BANNER_DATA['SR']['ce']['rate'] / 0.12
+        R_CE_UP = BANNER_DATA['R']['ce']['rate'] / 0.4
+        #print(SSR_SERVANT_UP, SR_SERVANT_UP, R_SERVANT_UP, SSR_CE_UP, SR_CE_UP, R_CE_UP)
 
 with open("data/fgo_servant.json", "r", encoding="utf-8") as to_read:
     global FGO_SERVANT_DATA
@@ -81,7 +81,7 @@ def get_random_num_whole(range):
 def summon_from_pool(card_type, card_rank, rand):
     rate = 0
     for i in range(len(BANNER_DATA[card_rank][card_type]['up'])):
-        rate += SSR_SERVANT_UP
+        rate += BANNER_DATA[card_rank][card_type]['rate']
         if rand < rate:
             return BANNER_DATA[card_rank][card_type]['up'][i]
 
@@ -93,22 +93,29 @@ def summon_once_normally():
     rand = get_random_num()
     if rand >= 0.99:
         # SSR Servant 1%
-        card = SERVANT, 5, summon_from_pool('servant', 'SSR', rand)
+        r = (rand - 0.99) / 0.01
+        card = SERVANT, 5, summon_from_pool('servant', 'SSR', r)
     elif 0.95 <= rand < 0.99:
         # SSR CE 4%
-        card = CE, 5, summon_from_pool('ce', 'SSR', rand)
+        r = (rand - 0.95) / 0.04
+        card = CE, 5, summon_from_pool('ce', 'SSR', r)
     elif 0.92 <= rand < 0.95:
         # SR Servant 3%
-        card = SERVANT, 4, summon_from_pool('servant', 'SR', rand)
+        r = (rand - 0.92) / 0.03
+        card = SERVANT, 4, summon_from_pool('servant', 'SR', r)
     elif 0.8 <= rand < 0.92:
         # SR CE 12%
-        card = CE, 4, summon_from_pool('ce', 'SR', rand)
+        r = (rand - 0.8) / 0.12
+        card = CE, 4, summon_from_pool('ce', 'SR', r)
     elif 0.4 <= rand < 0.8:
         # R Servant 40%
-        card = SERVANT, 3, summon_from_pool('servant', 'R', rand)
+        r = (rand - 0.4) / 0.4
+        card = SERVANT, 3, summon_from_pool('servant', 'R', r)
     else:
         # R CE 40%
-        card = CE, 3, summon_from_pool('ce', 'R', rand)
+        r = (rand - 0.0) / 0.4
+        card = CE, 3, summon_from_pool('ce', 'R', r)
+    #print(r)
     return card
 
 
@@ -191,18 +198,17 @@ def ten_roll(banner_name):
 def print_roll_result(cards):
     embeds = []
     for card in cards:
+        #print("id: ", card[2])
         if card[0] == SERVANT:
             id = card[2]
-            name = FGO_SERVANT_DATA[id]['name']
             url = FGO_SERVANT_DATA[id]['face']
             class_name = FGO_SERVANT_DATA[id]['className']
         else:
             id = card[2]
-            name = FGO_CE_DATA[id]['name']
             url = FGO_CE_DATA[id]['face']
             class_name = 'ce'
 
-        embed = {'name': name, 'url': url, 'className': class_name}
+        embed = {'url': url, 'className': class_name}
         if card[1] == SSR:
             embed['color'] = EMBED_COLOR_GOLD
             embed['value'] = EMBED_RANK_SSR
