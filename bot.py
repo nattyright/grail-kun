@@ -26,6 +26,8 @@ COOLDOWN = True
 async def on_ready():
     global CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID
     print('We have logged in as {0.user}'.format(client))
+    # set status message
+    await client.change_presence(activity=discord.Game('fateRP bot | f.help'))
     # set up calendar
     CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID = google_calendar.get_calendar_message_id()
     client.loop.create_task(update_server_calendar())
