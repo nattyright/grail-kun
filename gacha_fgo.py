@@ -2,6 +2,8 @@ from datetime import datetime
 from time import sleep
 import random
 import json
+from PIL import Image
+import requests
 
 TEN_ROLL_COUNT = 10
 
@@ -176,14 +178,17 @@ def print_roll_result(cards):
             id = card[2]
             name = FGO_SERVANT_DATA[id]['name']
             url = FGO_SERVANT_DATA[id]['face']
+            class_name = FGO_SERVANT_DATA[id]['className']
         else:
             id = card[2]
             name = FGO_CE_DATA[id]['name']
             url = FGO_CE_DATA[id]['face']
+            class_name = 'ce'
 
         embed = {}
         embed['name'] = name
         embed['url'] = url
+        embed['className'] = class_name
         if card[1] == SSR:
             embed['color'] = EMBED_COLOR_GOLD
             embed['value'] = EMBED_RANK_SSR
@@ -198,4 +203,103 @@ def print_roll_result(cards):
 
     return embeds
 
-#print_roll_result(ten_roll())
+
+
+
+CARD_IM = 'data/images/fgo_card/'
+
+
+def get_bg_path(rank):
+    return CARD_IM + 'cardgold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'cardsilver.png'
+def get_frame_path(rank):
+    return CARD_IM + 'cardgoldframe.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'cardsilverframe.png'
+def get_label_path(rank, class_name):
+    if class_name == 'ce':
+        return CARD_IM + 'cegold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'cesilver.png'
+    else:
+        return CARD_IM + 'servantgold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'servantsilver.png'
+def get_stars_path(rank):
+    if rank == EMBED_RANK_SSR:
+        return CARD_IM + 'starssr.png'
+    elif rank == EMBED_RANK_SR:
+        return CARD_IM + 'starsr.png'
+    else:
+        return CARD_IM + 'starr.png'
+def get_class_path(rank, class_name):
+    if class_name == 'saber':
+        return CARD_IM + 'classsabergold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classsabersilver.png'
+    elif class_name == 'archer':
+        return CARD_IM + 'classarchergold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classarchersilver.png'
+    elif class_name == 'lancer':
+        return CARD_IM + 'classlancergold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classlancersilver.png'
+    elif class_name == 'rider':
+        return CARD_IM + 'classridergold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classridersilver.png'
+    elif class_name == 'caster':
+        return CARD_IM + 'classcastergold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classcastersilver.png'
+    elif class_name == 'assassin':
+        return CARD_IM + 'classassassingold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classassassinsilver.png'
+    elif class_name == 'berserker':
+        return CARD_IM + 'classberserkergold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classberserkersilver.png'
+    elif class_name == 'ruler':
+        return CARD_IM + 'classrulergold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classrulersilver.png'
+    elif class_name == 'avenger':
+        return CARD_IM + 'classavengergold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classavengersilver.png'
+    elif class_name == 'moonCancer':
+        return CARD_IM + 'classmoonCancergold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classmoonCancersilver.png'
+    elif class_name == 'alterEgo':
+        return CARD_IM + 'classalterEgogold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classalterEgosilver.png'
+    elif class_name == 'foreigner':
+        return CARD_IM + 'classforeignergold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classforeignersilver.png'
+    else:
+        return CARD_IM + "classce.png"
+
+
+# use pillow to make a roll image with the results in
+# print_roll_results
+def generate_ten_roll_image(results):
+    card_images = []
+
+    for result in results:
+        rank = result['value']
+        class_name = result['className']
+        url = result['url']
+
+        bg = Image.open(get_bg_path(rank))
+        card_art = Image.open(requests.get(url, stream=True).raw)
+        frame = Image.open(get_frame_path(rank))
+        label = Image.open(get_label_path(rank, class_name))
+        stars = Image.open(get_stars_path(rank))
+        class_art = Image.open(get_class_path(rank, class_name))
+
+        bg.paste(card_art, (6, 11))
+        bg.paste(frame, (0, 0), frame)
+        bg.paste(label, (6, 134))
+        bg.paste(stars, (58, 108), stars)
+        bg.paste(class_art, (3,3), class_art)
+
+        card_images.append(bg)
+
+    result_bg = Image.open(CARD_IM + 'resultbg.png')
+    y = 155
+    y_delta = 180
+    x1 = 70
+    x2 = 220
+    x_delta = 150
+    card_location = [(x1,               y),
+                     (x1 + x_delta,     y),
+                     (x1 + x_delta * 2, y),
+                     (x1 + x_delta * 3, y),
+                     (x1 + x_delta * 4, y),
+                     (x1 + x_delta * 5, y),
+                     (x2,               y + y_delta),
+                     (x2 + x_delta,     y + y_delta),
+                     (x2 + x_delta * 2, y + y_delta),
+                     (x2 + x_delta * 3, y + y_delta)]
+    for i in range(len(card_images)):
+        result_bg.paste(card_images[i], card_location[i], card_images[i])
+
+    #result_bg.show()
+    return result_bg
+
+
+#generate_ten_roll_image(print_roll_result(ten_roll()))

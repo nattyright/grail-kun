@@ -3,6 +3,7 @@ import asyncio
 import os
 import time
 from dotenv import load_dotenv
+from io import BytesIO
 
 import google_calendar
 import help
@@ -60,25 +61,26 @@ async def on_message(message):
 
     if message.content.startswith('f.gacha'):
         global COOLDOWN
+        author_id = '<@' + str(message.author.id) + '>'
+
         if COOLDOWN:
             COOLDOWN = False
+            await message.channel.send('Generating ten-roll...' + author_id)
+            await sent_ten_roll_image(message, author_id)
 
-            cards = gacha_fgo.print_roll_result(gacha_fgo.ten_roll())
-            author_id = '<@' + str(message.author.id) + '>'
-            await message.channel.send('Servant Fes Banner #1 ' + author_id)
-            for card in cards:
-                embed = discord.Embed(title="",
-                                      color=card['color'])
-                embed.set_thumbnail(url=card['url'])
-                embed.add_field(name=card['name'],
-                                value=card['value'],
-                                inline=False)
-                await message.channel.send(embed=embed)
-            time.sleep(1)
             COOLDOWN = True
         else:
-            author_id = '<@' + str(message.author.id) + '>'
             await message.channel.send('wait and cope ' + author_id)
+
+
+@client.event
+async def sent_ten_roll_image(message, author_id):
+    cards = gacha_fgo.print_roll_result(gacha_fgo.ten_roll())
+    cards_im = gacha_fgo.generate_ten_roll_image(cards)
+    with BytesIO() as image_binary:
+        cards_im.save(image_binary, 'PNG')
+        image_binary.seek(0)
+        await message.channel.send(content=author_id, file=discord.File(fp=image_binary, filename='image.png'))
 
 
 @client.event
