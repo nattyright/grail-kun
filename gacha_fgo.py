@@ -6,17 +6,9 @@ from PIL import Image
 import requests
 
 TEN_ROLL_COUNT = 10
-
-SSR_SERVANT_UP = 0.007
-SR_SERVANT_UP = 0.012
-R_SERVANT_UP = 0.0
-
-SSR_CE_UP = 0.028
-SR_CE_UP = 0.04
-R_CE_UP = 0.08
-
 BANNER_TITLE = 'servant_fes_rerun_1'
 
+# enums
 SERVANT = 0
 CE = 1
 SSR = 5
@@ -28,9 +20,38 @@ EMBED_RANK_SSR = '★★★★★'
 EMBED_RANK_SR = '★★★★'
 EMBED_RANK_R = '★★★'
 
-with open("data/fgo_gacha.json", "r", encoding="utf-8") as to_read:
-    global BANNER_DATA
-    BANNER_DATA = json.load(to_read)[BANNER_TITLE]
+
+BANNER_DATA = {}
+SSR_SERVANT_UP = 0
+SR_SERVANT_UP = 0
+R_SERVANT_UP = 0
+SSR_CE_UP = 0
+SR_CE_UP = 0
+R_CE_UP = 0
+
+#get banner data
+def get_banner_data(banner_name):
+    with open("data/fgo_gacha.json", "r", encoding="utf-8") as to_read:
+        global BANNER_DATA
+        global BANNER_DATA
+        global SSR_SERVANT_UP
+        global SR_SERVANT_UP
+        global R_SERVANT_UP
+        global SSR_CE_UP
+        global SR_CE_UP
+        global R_CE_UP
+
+        BANNER_DATA = json.load(to_read)[banner_name]
+        # rates for rate-up and non-rate servants
+        SSR_SERVANT_UP = BANNER_DATA['SSR']['servant']['rate']
+        SR_SERVANT_UP = BANNER_DATA['SR']['servant']['rate']
+        R_SERVANT_UP = BANNER_DATA['R']['servant']['rate']
+        # rates for rate-up and non-rate ces
+        SSR_CE_UP = BANNER_DATA['SSR']['ce']['rate']
+        SR_CE_UP = BANNER_DATA['SR']['ce']['rate']
+        R_CE_UP = BANNER_DATA['R']['ce']['rate']
+
+
 with open("data/fgo_servant.json", "r", encoding="utf-8") as to_read:
     global FGO_SERVANT_DATA
     FGO_SERVANT_DATA = {}
@@ -130,7 +151,8 @@ def summon_pity_servant():
     return card
 
 
-def ten_roll():
+def ten_roll(banner_name):
+    get_banner_data(banner_name)
     has_gold = False
     has_servant = False
     cards = []

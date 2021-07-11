@@ -5,8 +5,11 @@ import time
 from dotenv import load_dotenv
 from io import BytesIO
 
+from discord.ext.commands import Bot
+from discord_components import DiscordComponents, Select, SelectOption
+
 import google_calendar
-import help
+import bot_help
 import gacha_fgo
 
 load_dotenv()
@@ -17,7 +20,12 @@ CALENDAR_UPDATE_INTERVAL = 43200  # seconds, this is 12 hours
 ENUM_ONGOING_EVENT = 0
 ENUM_UPCOMING_EVENT = 1
 
-client = discord.Client()
+
+#client = discord.Client()
+client = Bot(command_prefix="f.", help_command=None)
+#buttons and select option (not in official discord.py yet
+DiscordComponents(client)
+
 
 COOLDOWN = True
 
@@ -33,51 +41,65 @@ async def on_ready():
     client.loop.create_task(update_server_calendar())
 
 
-@client.event
-async def on_message(message):
-    if message.author == client.user:
-        return
 
-    if message.content.startswith('f.help'):
-        discord_embed = help.get_help_message()
+@client.command()
+async def help(ctx):
+    discord_embed = bot_help.get_help_message()
 
-        embed = discord.Embed(title="",
-                              color=0)
-        embed.add_field(name="Admin Commands",
-                        value=discord_embed["embeds"][0]["fields"][0]["value"],
-                        inline=False)
-        embed.add_field(name="User Commands",
-                        value=discord_embed["embeds"][0]["fields"][1]["value"],
-                        inline=False)
-        await message.channel.send(embed=embed)
+    embed = discord.Embed(title="",
+                          color=0)
+    embed.add_field(name="Admin Commands",
+                    value=discord_embed["embeds"][0]["fields"][0]["value"],
+                    inline=False)
+    embed.add_field(name="User Commands",
+                    value=discord_embed["embeds"][0]["fields"][1]["value"],
+                    inline=False)
+    await ctx.channel.send(embed=embed)
 
-    if message.content.startswith('f.calendar') and \
-            not discord.utils.get(message.author.roles, name="Administrator") is None:
+
+@client.command()
+async def calendar(ctx):
+    if not discord.utils.get(ctx.author.roles, name="Administrator") is None:
         global CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID
-        msg_sent = await message.channel.send('Fetching server calendar...')
+        msg_sent = await ctx.channel.send('Fetching server calendar...')
 
         CALENDAR_CHANNEL_ID = msg_sent.channel.id
         CALENDAR_MESSAGE_ID = msg_sent.id
         google_calendar.update_calendar_message_id(CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID)
         await update_server_calendar_once_only()
+    else:
+        await ctx.channel.send('[ADMIN ROLE REQUIRED] :*)*')
 
-    if message.content.startswith('f.gacha'):
-        global COOLDOWN
-        author_id = '<@' + str(message.author.id) + '>'
 
-        if COOLDOWN:
-            COOLDOWN = False
-            await message.channel.send('Generating ten-roll...' + author_id)
-            await sent_ten_roll_image(message, author_id)
+@client.command()
+async def gacha(ctx):
+    global COOLDOWN
+    author_id = '<@' + str(ctx.author.id) + '>'
 
-            COOLDOWN = True
-        else:
-            await message.channel.send('wait and cope ' + author_id)
+    if COOLDOWN:
+        COOLDOWN = False
+
+        msg_sent = await ctx.send(
+            "Pick a banner",
+            components=[
+                Select(placeholder="Available banners",
+                       options=[SelectOption(label="Servant Fes Rerun #1", value="servant_fes_rerun_1"),
+                                SelectOption(label="Servant Fes Rerun #2", value="servant_fes_rerun_2"),
+                                SelectOption(label="Servant Fes Rerun #3", value="servant_fes_rerun_3")])
+            ]
+        )
+        interaction = await client.wait_for("select_option")
+        await msg_sent.delete()
+        await ctx.send(content='Generating ten-roll for ' + interaction.component[0].label + '...' + author_id)
+        await sent_ten_roll_image(ctx, author_id, interaction.component[0].value)
+        COOLDOWN = True
+    else:
+        await ctx.channel.send('wait and cope ' + author_id)
 
 
 @client.event
-async def sent_ten_roll_image(message, author_id):
-    cards = gacha_fgo.print_roll_result(gacha_fgo.ten_roll())
+async def sent_ten_roll_image(message, author_id, banner_name):
+    cards = gacha_fgo.print_roll_result(gacha_fgo.ten_roll(banner_name))
     cards_im = gacha_fgo.generate_ten_roll_image(cards)
     with BytesIO() as image_binary:
         cards_im.save(image_binary, 'PNG')
@@ -129,6 +151,7 @@ async def update_server_calendar_once_only():
                     value=discord_embed["embeds"][0]["fields"][ENUM_UPCOMING_EVENT]["value"],
                     inline=False)
     await message.edit(embed=embed, content="")
+
 
 
 client.run(TOKEN)
