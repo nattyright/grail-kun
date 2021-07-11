@@ -28,7 +28,6 @@ EMBED_RANK_SSR = '★★★★★'
 EMBED_RANK_SR = '★★★★'
 EMBED_RANK_R = '★★★'
 
-
 with open("data/fgo_gacha.json", "r", encoding="utf-8") as to_read:
     global BANNER_DATA
     BANNER_DATA = json.load(to_read)[BANNER_TITLE]
@@ -89,8 +88,6 @@ def summon_once_normally():
     else:
         # R CE 40%
         card = CE, 3, summon_from_pool('ce', 'R', rand)
-
-    #print(card)
     return card
 
 
@@ -108,8 +105,6 @@ def summon_pity_gold_card():
     else:
         # SR CE 60%
         card = CE, 4, summon_from_pool('ce', 'SR', rand)
-
-    #print(card)
     return card
 
 
@@ -132,8 +127,6 @@ def summon_pity_servant():
     else:
         # R Servant
         card = SERVANT, 3, summon_from_pool('servant', 'R', rand)
-
-    #print(card)
     return card
 
 
@@ -159,6 +152,7 @@ def ten_roll():
     else:
         card = summon_once_normally()
         cards.append(card)
+
     # if no servant, nth card will be servant
     if not has_servant:
         card = summon_pity_servant()
@@ -167,9 +161,10 @@ def ten_roll():
         card = summon_once_normally()
         cards.append(card)
 
-    #random.seed(datetime.now())
-    #random.shuffle(cards)
+    random.seed(datetime.now())
+    random.shuffle(cards)
     return cards
+
 
 def print_roll_result(cards):
     embeds = []
@@ -185,10 +180,7 @@ def print_roll_result(cards):
             url = FGO_CE_DATA[id]['face']
             class_name = 'ce'
 
-        embed = {}
-        embed['name'] = name
-        embed['url'] = url
-        embed['className'] = class_name
+        embed = {'name': name, 'url': url, 'className': class_name}
         if card[1] == SSR:
             embed['color'] = EMBED_COLOR_GOLD
             embed['value'] = EMBED_RANK_SSR
@@ -200,10 +192,7 @@ def print_roll_result(cards):
             embed['value'] = EMBED_RANK_R
 
         embeds.append(embed)
-
     return embeds
-
-
 
 
 CARD_IM = 'data/images/fgo_card/'
@@ -211,13 +200,21 @@ CARD_IM = 'data/images/fgo_card/'
 
 def get_bg_path(rank):
     return CARD_IM + 'cardgold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'cardsilver.png'
+
+
 def get_frame_path(rank):
-    return CARD_IM + 'cardgoldframe.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'cardsilverframe.png'
+    return CARD_IM + 'cardgoldframe.png' if (
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'cardsilverframe.png'
+
+
 def get_label_path(rank, class_name):
     if class_name == 'ce':
         return CARD_IM + 'cegold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'cesilver.png'
     else:
-        return CARD_IM + 'servantgold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'servantsilver.png'
+        return CARD_IM + 'servantgold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'servantsilver.png'
+
+
 def get_stars_path(rank):
     if rank == EMBED_RANK_SSR:
         return CARD_IM + 'starssr.png'
@@ -225,31 +222,45 @@ def get_stars_path(rank):
         return CARD_IM + 'starsr.png'
     else:
         return CARD_IM + 'starr.png'
+
+
 def get_class_path(rank, class_name):
     if class_name == 'saber':
-        return CARD_IM + 'classsabergold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classsabersilver.png'
+        return CARD_IM + 'classsabergold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classsabersilver.png'
     elif class_name == 'archer':
-        return CARD_IM + 'classarchergold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classarchersilver.png'
+        return CARD_IM + 'classarchergold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classarchersilver.png'
     elif class_name == 'lancer':
-        return CARD_IM + 'classlancergold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classlancersilver.png'
+        return CARD_IM + 'classlancergold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classlancersilver.png'
     elif class_name == 'rider':
-        return CARD_IM + 'classridergold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classridersilver.png'
+        return CARD_IM + 'classridergold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classridersilver.png'
     elif class_name == 'caster':
-        return CARD_IM + 'classcastergold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classcastersilver.png'
+        return CARD_IM + 'classcastergold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classcastersilver.png'
     elif class_name == 'assassin':
-        return CARD_IM + 'classassassingold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classassassinsilver.png'
+        return CARD_IM + 'classassassingold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classassassinsilver.png'
     elif class_name == 'berserker':
-        return CARD_IM + 'classberserkergold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classberserkersilver.png'
+        return CARD_IM + 'classberserkergold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classberserkersilver.png'
     elif class_name == 'ruler':
-        return CARD_IM + 'classrulergold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classrulersilver.png'
+        return CARD_IM + 'classrulergold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classrulersilver.png'
     elif class_name == 'avenger':
-        return CARD_IM + 'classavengergold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classavengersilver.png'
+        return CARD_IM + 'classavengergold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classavengersilver.png'
     elif class_name == 'moonCancer':
-        return CARD_IM + 'classmoonCancergold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classmoonCancersilver.png'
+        return CARD_IM + 'classmoonCancergold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classmoonCancersilver.png'
     elif class_name == 'alterEgo':
-        return CARD_IM + 'classalterEgogold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classalterEgosilver.png'
+        return CARD_IM + 'classalterEgogold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classalterEgosilver.png'
     elif class_name == 'foreigner':
-        return CARD_IM + 'classforeignergold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classforeignersilver.png'
+        return CARD_IM + 'classforeignergold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classforeignersilver.png'
     else:
         return CARD_IM + "classce.png"
 
@@ -275,7 +286,7 @@ def generate_ten_roll_image(results):
         bg.paste(frame, (0, 0), frame)
         bg.paste(label, (6, 134))
         bg.paste(stars, (58, 108), stars)
-        bg.paste(class_art, (3,3), class_art)
+        bg.paste(class_art, (3, 3), class_art)
 
         card_images.append(bg)
 
@@ -285,21 +296,20 @@ def generate_ten_roll_image(results):
     x1 = 70
     x2 = 220
     x_delta = 150
-    card_location = [(x1,               y),
-                     (x1 + x_delta,     y),
+    card_location = [(x1, y),
+                     (x1 + x_delta, y),
                      (x1 + x_delta * 2, y),
                      (x1 + x_delta * 3, y),
                      (x1 + x_delta * 4, y),
                      (x1 + x_delta * 5, y),
-                     (x2,               y + y_delta),
-                     (x2 + x_delta,     y + y_delta),
+                     (x2, y + y_delta),
+                     (x2 + x_delta, y + y_delta),
                      (x2 + x_delta * 2, y + y_delta),
                      (x2 + x_delta * 3, y + y_delta)]
     for i in range(len(card_images)):
         result_bg.paste(card_images[i], card_location[i], card_images[i])
 
-    #result_bg.show()
+    # result_bg.show()
     return result_bg
 
-
-#generate_ten_roll_image(print_roll_result(ten_roll()))
+# generate_ten_roll_image(print_roll_result(ten_roll()))
