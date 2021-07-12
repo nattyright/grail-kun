@@ -90,7 +90,7 @@ async def gacha(ctx):
         )
         interaction = await client.wait_for("select_option")
         await msg_sent.delete()
-        await ctx.send(content='Generating ten-roll for ' + interaction.component[0].label + '...' + author_id)
+        await ctx.send(content='Generating 11-roll for ' + interaction.component[0].label + '...' + author_id)
         await sent_ten_roll_image(ctx, author_id, interaction.component[0].value)
         COOLDOWN = True
     else:

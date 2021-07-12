@@ -4,7 +4,7 @@ import random
 import json
 from PIL import Image
 
-TEN_ROLL_COUNT = 10
+TEN_ROLL_COUNT = 11
 BANNER_TITLE = 'servant_fes_rerun_1'
 SERVANT_ART_PATH = 'data/images/fgo_servant/'
 CE_ART_PATH = 'data/images/fgo_ce/'
@@ -301,8 +301,8 @@ def generate_ten_roll_image(results):
     result_bg = Image.open(UI_ART_PATH + 'resultbg.png')
     y = 155
     y_delta = 180
-    x1 = 70
-    x2 = 220
+    x1 = 65
+    x2 = 140
     x_delta = 150
     card_location = [(x1, y),
                      (x1 + x_delta, y),
@@ -313,7 +313,8 @@ def generate_ten_roll_image(results):
                      (x2, y + y_delta),
                      (x2 + x_delta, y + y_delta),
                      (x2 + x_delta * 2, y + y_delta),
-                     (x2 + x_delta * 3, y + y_delta)]
+                     (x2 + x_delta * 3, y + y_delta),
+                     (x2 + x_delta * 4, y + y_delta)]
     for i in range(len(card_images)):
         result_bg.paste(card_images[i], card_location[i], card_images[i])
 
