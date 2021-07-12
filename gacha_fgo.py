@@ -3,10 +3,12 @@ from time import sleep
 import random
 import json
 from PIL import Image
-import requests
 
 TEN_ROLL_COUNT = 10
 BANNER_TITLE = 'servant_fes_rerun_1'
+SERVANT_ART_PATH = 'data/images/fgo_servant/'
+CE_ART_PATH = 'data/images/fgo_ce/'
+UI_ART_PATH = 'data/images/fgo_card/'
 
 # enums
 SERVANT = 0
@@ -20,60 +22,33 @@ EMBED_RANK_SSR = '★★★★★'
 EMBED_RANK_SR = '★★★★'
 EMBED_RANK_R = '★★★'
 
-
 BANNER_DATA = {}
-SSR_SERVANT_UP = 0
-SR_SERVANT_UP = 0
-R_SERVANT_UP = 0
-SSR_CE_UP = 0
-SR_CE_UP = 0
-R_CE_UP = 0
-
 RATES = {'SSR' : {'servant': 0, 'ce': 0}, 'SR': {'servant': 0, 'ce': 0}, 'R': {'servant': 0, 'ce': 0}}
+
+
+with open("data/fgo_servant.json", "r", encoding="utf-8") as to_read:
+    global FGO_SERVANT_DATA
+    FGO_SERVANT_DATA = json.load(to_read)
+with open("data/fgo_ce.json", "r", encoding="utf-8") as to_read:
+    global FGO_CE_DATA
+    FGO_CE_DATA = json.load(to_read)
+
 
 #get banner data
 def get_banner_data(banner_name):
     with open("data/fgo_gacha.json", "r", encoding="utf-8") as to_read:
         global BANNER_DATA
-        global BANNER_DATA
-        global SSR_SERVANT_UP
-        global SR_SERVANT_UP
-        global R_SERVANT_UP
-        global SSR_CE_UP
-        global SR_CE_UP
-        global R_CE_UP
         global RATES
-
         BANNER_DATA = json.load(to_read)[banner_name]
-        # rates for rate-up and non-rate servants
-        SSR_SERVANT_UP = BANNER_DATA['SSR']['servant']['rate'] / 0.01
-        SR_SERVANT_UP = BANNER_DATA['SR']['servant']['rate'] / 0.03
-        R_SERVANT_UP = BANNER_DATA['R']['servant']['rate'] / 0.4
-        # rates for rate-up and non-rate ces
-        SSR_CE_UP = BANNER_DATA['SSR']['ce']['rate'] / 0.04
-        SR_CE_UP = BANNER_DATA['SR']['ce']['rate'] / 0.12
-        R_CE_UP = BANNER_DATA['R']['ce']['rate'] / 0.4
 
-        RATES['SSR']['servant'] = SSR_SERVANT_UP
-        RATES['SR']['servant'] = SR_SERVANT_UP
-        RATES['R']['servant'] = R_SERVANT_UP
-        RATES['SSR']['ce'] = SSR_CE_UP
-        RATES['SR']['ce'] = SR_CE_UP
-        RATES['R']['ce'] = R_CE_UP
-        #print(SSR_SERVANT_UP, SR_SERVANT_UP, R_SERVANT_UP, SSR_CE_UP, SR_CE_UP, R_CE_UP)
-
-with open("data/fgo_servant.json", "r", encoding="utf-8") as to_read:
-    global FGO_SERVANT_DATA
-    FGO_SERVANT_DATA = {}
-    data = json.load(to_read)
-    for item in data:
-        FGO_SERVANT_DATA[item['collectionNo']] = item
-with open("data/fgo_ce.json", "r", encoding="utf-8") as to_read:
-    global FGO_CE_DATA
-    FGO_CE_DATA = {}
-    data = json.load(to_read)
-    for item in data:
-        FGO_CE_DATA[item['collectionNo']] = item
+        RATES['SSR']['servant'] = BANNER_DATA['SSR']['servant']['rate'] / 0.01
+        RATES['SR']['servant'] = BANNER_DATA['SR']['servant']['rate'] / 0.03
+        RATES['R']['servant'] = BANNER_DATA['R']['servant']['rate'] / 0.4
+        RATES['SSR']['ce'] = BANNER_DATA['SSR']['ce']['rate'] / 0.04
+        RATES['SR']['ce'] = BANNER_DATA['SR']['ce']['rate'] / 0.12
+        RATES['R']['ce'] = BANNER_DATA['R']['ce']['rate'] / 0.4
+        #print(RATES['SSR']['servant'],RATES['SR']['servant'],RATES['R']['servant'])
+        #print(RATES['SSR']['ce'],RATES['SR']['ce'],RATES['R']['ce'])
 
 
 def get_random_num():
@@ -92,7 +67,7 @@ def summon_from_pool(card_type, card_rank, rand):
     rate = 0
     for i in range(len(BANNER_DATA[card_rank][card_type]['up'])):
         rate += RATES[card_rank][card_type]
-        if rand < rate:
+        if rate > 0 and rand < rate:
             return BANNER_DATA[card_rank][card_type]['up'][i]
 
     normal = get_random_num_whole(len(BANNER_DATA[card_rank][card_type]['normal']))
@@ -200,107 +175,102 @@ def ten_roll(banner_name):
         card = summon_once_normally()
         cards.append(card)
 
-    random.seed(datetime.now())
-    random.shuffle(cards)
+    #random.seed(datetime.now())
+    #random.shuffle(cards)
     return cards
 
 
 def print_roll_result(cards):
     embeds = []
     for card in cards:
-        #print("id: ", card[2])
+        id = str(card[2])
         if card[0] == SERVANT:
-            id = card[2]
-            url = FGO_SERVANT_DATA[id]['face']
+            url = SERVANT_ART_PATH + str(id).zfill(3) + '.png'
             class_name = FGO_SERVANT_DATA[id]['className']
         else:
-            id = card[2]
-            url = FGO_CE_DATA[id]['face']
-            class_name = 'ce'
+            url = CE_ART_PATH + str(id).zfill(3) + '.png'
+            class_name = FGO_CE_DATA[id]['className']
 
         embed = {'url': url, 'className': class_name}
         if card[1] == SSR:
-            embed['color'] = EMBED_COLOR_GOLD
             embed['value'] = EMBED_RANK_SSR
         elif card[1] == SR:
-            embed['color'] = EMBED_COLOR_GOLD
             embed['value'] = EMBED_RANK_SR
         else:
-            embed['color'] = EMBED_COLOR_SILVER
             embed['value'] = EMBED_RANK_R
 
         embeds.append(embed)
     return embeds
 
 
-CARD_IM = 'data/images/fgo_card/'
+
 
 
 def get_bg_path(rank):
-    return CARD_IM + 'cardgold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'cardsilver.png'
+    return UI_ART_PATH + 'cardgold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'cardsilver.png'
 
 
 def get_frame_path(rank):
-    return CARD_IM + 'cardgoldframe.png' if (
-                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'cardsilverframe.png'
+    return UI_ART_PATH + 'cardgoldframe.png' if (
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'cardsilverframe.png'
 
 
 def get_label_path(rank, class_name):
     if class_name == 'ce':
-        return CARD_IM + 'cegold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'cesilver.png'
+        return UI_ART_PATH + 'cegold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'cesilver.png'
     else:
-        return CARD_IM + 'servantgold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'servantsilver.png'
+        return UI_ART_PATH + 'servantgold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'servantsilver.png'
 
 
 def get_stars_path(rank):
     if rank == EMBED_RANK_SSR:
-        return CARD_IM + 'starssr.png'
+        return UI_ART_PATH + 'starssr.png'
     elif rank == EMBED_RANK_SR:
-        return CARD_IM + 'starsr.png'
+        return UI_ART_PATH + 'starsr.png'
     else:
-        return CARD_IM + 'starr.png'
+        return UI_ART_PATH + 'starr.png'
 
 
 def get_class_path(rank, class_name):
     if class_name == 'saber':
-        return CARD_IM + 'classsabergold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classsabersilver.png'
+        return UI_ART_PATH + 'classsabergold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classsabersilver.png'
     elif class_name == 'archer':
-        return CARD_IM + 'classarchergold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classarchersilver.png'
+        return UI_ART_PATH + 'classarchergold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classarchersilver.png'
     elif class_name == 'lancer':
-        return CARD_IM + 'classlancergold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classlancersilver.png'
+        return UI_ART_PATH + 'classlancergold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classlancersilver.png'
     elif class_name == 'rider':
-        return CARD_IM + 'classridergold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classridersilver.png'
+        return UI_ART_PATH + 'classridergold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classridersilver.png'
     elif class_name == 'caster':
-        return CARD_IM + 'classcastergold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classcastersilver.png'
+        return UI_ART_PATH + 'classcastergold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classcastersilver.png'
     elif class_name == 'assassin':
-        return CARD_IM + 'classassassingold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classassassinsilver.png'
+        return UI_ART_PATH + 'classassassingold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classassassinsilver.png'
     elif class_name == 'berserker':
-        return CARD_IM + 'classberserkergold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classberserkersilver.png'
+        return UI_ART_PATH + 'classberserkergold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classberserkersilver.png'
     elif class_name == 'ruler':
-        return CARD_IM + 'classrulergold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classrulersilver.png'
+        return UI_ART_PATH + 'classrulergold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classrulersilver.png'
     elif class_name == 'avenger':
-        return CARD_IM + 'classavengergold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classavengersilver.png'
+        return UI_ART_PATH + 'classavengergold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classavengersilver.png'
     elif class_name == 'moonCancer':
-        return CARD_IM + 'classmoonCancergold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classmoonCancersilver.png'
+        return UI_ART_PATH + 'classmoonCancergold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classmoonCancersilver.png'
     elif class_name == 'alterEgo':
-        return CARD_IM + 'classalterEgogold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classalterEgosilver.png'
+        return UI_ART_PATH + 'classalterEgogold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classalterEgosilver.png'
     elif class_name == 'foreigner':
-        return CARD_IM + 'classforeignergold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else CARD_IM + 'classforeignersilver.png'
+        return UI_ART_PATH + 'classforeignergold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classforeignersilver.png'
     else:
-        return CARD_IM + "classce.png"
+        return UI_ART_PATH + "classce.png"
 
 
 # use pillow to make a roll image with the results in
@@ -314,7 +284,7 @@ def generate_ten_roll_image(results):
         url = result['url']
 
         bg = Image.open(get_bg_path(rank))
-        card_art = Image.open(requests.get(url, stream=True).raw)
+        card_art = Image.open(url) #downloaded img in directory - open directly
         frame = Image.open(get_frame_path(rank))
         label = Image.open(get_label_path(rank, class_name))
         stars = Image.open(get_stars_path(rank))
@@ -328,7 +298,7 @@ def generate_ten_roll_image(results):
 
         card_images.append(bg)
 
-    result_bg = Image.open(CARD_IM + 'resultbg.png')
+    result_bg = Image.open(UI_ART_PATH + 'resultbg.png')
     y = 155
     y_delta = 180
     x1 = 70
