@@ -261,11 +261,11 @@ def get_class_path(rank, class_name):
         return UI_ART_PATH + 'classavengergold.png' if (
                     rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classavengersilver.png'
     elif class_name == 'moonCancer':
-        return UI_ART_PATH + 'classmoonCancergold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classmoonCancersilver.png'
+        return UI_ART_PATH + 'classmooncancergold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classmooncancersilver.png'
     elif class_name == 'alterEgo':
-        return UI_ART_PATH + 'classalterEgogold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classalterEgosilver.png'
+        return UI_ART_PATH + 'classalteregogold.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classalteregosilver.png'
     elif class_name == 'foreigner':
         return UI_ART_PATH + 'classforeignergold.png' if (
                     rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classforeignersilver.png'
