@@ -1,2 +1,9 @@
-.env
 **/.credentials
+**/temp.py
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+
+# Environments
+.env
+.venv
