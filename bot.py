@@ -119,7 +119,7 @@ async def single(ctx):
         )
         interaction = await client.wait_for("select_option")
         await msg_sent.delete()
-        await ctx.send(content='Generating 11-roll for ' + interaction.component[0].label + '...' + author_id)
+        await ctx.send(content='Generating single roll for ' + interaction.component[0].label + '...' + author_id)
         await sent_single_roll_image(ctx, author_id, interaction.component[0].value)
         COOLDOWN = True
     else:
