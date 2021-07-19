@@ -3,11 +3,15 @@ from time import sleep
 import random
 import json
 from PIL import Image
+from PIL import ImageFont
+from PIL import ImageDraw
 
 TEN_ROLL_COUNT = 11
 BANNER_TITLE = 'servant_fes_rerun_1'
 SERVANT_ART_PATH = 'data/images/fgo_servant/'
+SERVANT_CHARAGRAPH_PATH = 'data/images/fgo_servant_charagraph/'
 CE_ART_PATH = 'data/images/fgo_ce/'
+CE_CHARAGRAPH_PATH = 'data/images/fgo_ce_charagraph/'
 UI_ART_PATH = 'data/images/fgo_card/'
 
 # enums
@@ -175,9 +179,19 @@ def ten_roll(banner_name):
         card = summon_once_normally()
         cards.append(card)
 
-    #random.seed(datetime.now())
-    #random.shuffle(cards)
+    random.seed(datetime.now())
+    random.shuffle(cards)
     return cards
+
+
+def single_roll(banner_name):
+    get_banner_data(banner_name)
+    card = summon_once_normally()
+    if card[0] == SERVANT:
+        has_servant = True
+    if card[1] == SSR or card[1] == SR:
+        has_gold = True
+    return card
 
 
 def print_roll_result(cards):
@@ -203,7 +217,25 @@ def print_roll_result(cards):
     return embeds
 
 
+def print_roll_result_single(card):
+    id = str(card[2])
 
+    if card[0] == SERVANT:
+        url = SERVANT_CHARAGRAPH_PATH + str(id) + '.png'
+        class_name = FGO_SERVANT_DATA[id]['className']
+    else:
+        url = CE_CHARAGRAPH_PATH + str(id) + '.png'
+        class_name = FGO_CE_DATA[id]['className']
+
+    embed = {'url': url, 'className': class_name}
+    if card[1] == SSR:
+        embed['value'] = EMBED_RANK_SSR
+    elif card[1] == SR:
+        embed['value'] = EMBED_RANK_SR
+    else:
+        embed['value'] = EMBED_RANK_R
+
+    return embed
 
 
 def get_bg_path(rank):
@@ -322,3 +354,120 @@ def generate_ten_roll_image(results):
     return result_bg
 
 # generate_ten_roll_image(print_roll_result(ten_roll()))
+
+
+
+def get_bg_path_single(class_name):
+    if class_name == 'ce':
+        return UI_ART_PATH + 'charagraph_bg_ce.png'
+    else:
+        return UI_ART_PATH + 'charagraph_bg_servant.png'
+
+
+def get_frame_path_single(rank, class_name):
+    frame_path_start = UI_ART_PATH + 'charagraph_'
+    frame_path_end = '.png'
+
+    if class_name == 'ce':
+        frame_path_mid = 'ce_'
+    else:
+        frame_path_mid = 'servant_'
+
+    if rank == EMBED_RANK_SSR:
+        frame_path_mid += '05'
+    elif rank == EMBED_RANK_SR:
+        frame_path_mid += '04'
+    elif rank == EMBED_RANK_R:
+        frame_path_mid += '03'
+
+    return frame_path_start + frame_path_mid + frame_path_end
+
+
+def get_class_path_single(rank, class_name):
+    if class_name == 'saber':
+        return UI_ART_PATH + 'classsabergold_charagraph.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classsabersilver_charagraph.png'
+    elif class_name == 'archer':
+        return UI_ART_PATH + 'classarchergold_charagraph.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classarchersilver_charagraph.png'
+    elif class_name == 'lancer':
+        return UI_ART_PATH + 'classlancergold_charagraph.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classlancersilver_charagraph.png'
+    elif class_name == 'rider':
+        return UI_ART_PATH + 'classridergold_charagraph.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classridersilver_charagraph.png'
+    elif class_name == 'caster':
+        return UI_ART_PATH + 'classcastergold_charagraph.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classcastersilver_charagraph.png'
+    elif class_name == 'assassin':
+        return UI_ART_PATH + 'classassassingold_charagraph.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classassassinsilver_charagraph.png'
+    elif class_name == 'berserker':
+        return UI_ART_PATH + 'classberserkergold_charagraph.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classberserkersilver_charagraph.png'
+    elif class_name == 'ruler':
+        return UI_ART_PATH + 'classrulergold_charagraph.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classrulersilver_charagraph.png'
+    elif class_name == 'avenger':
+        return UI_ART_PATH + 'classavengergold_charagraph.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classavengersilver_charagraph.png'
+    elif class_name == 'moonCancer':
+        return UI_ART_PATH + 'classmooncancergold_charagraph.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classmooncancersilver_charagraph.png'
+    elif class_name == 'alterEgo':
+        return UI_ART_PATH + 'classalteregogold_charagraph.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classalteregosilver_charagraph.png'
+    elif class_name == 'foreigner':
+        return UI_ART_PATH + 'classforeignergold_charagraph.png' if (
+                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classforeignersilver_charagraph.png'
+    else:
+        return UI_ART_PATH + "classce.png"
+
+
+# use pillow to make a roll image with the results in
+# print_roll_results
+def generate_single_roll_image(result):
+
+    rank = result['value']
+    class_name = result['className']
+    url = result['url']
+
+    bg = Image.open(get_bg_path_single(class_name))
+    card_art = Image.open(url) #downloaded img in directory - open directly
+    frame = Image.open(get_frame_path_single(rank, class_name))
+    class_art = Image.open(get_class_path_single(rank, class_name))
+
+    if class_name == 'ce':
+        bg.paste(card_art, (0, 0), bg)
+    else:
+        bg.paste(card_art, (4, 20))
+    bg.paste(frame, (0, 0), frame)
+    bg.paste(class_art, (104, 368), class_art)
+
+    font = ImageFont.truetype(UI_ART_PATH + 'honoka.ttf', 24)
+    font2 = ImageFont.truetype(UI_ART_PATH + 'honoka.ttf', 13)
+    msg = "Salt Sim"
+    msg2 = "Did you get what you wanted?w?"
+    bg_draw = ImageDraw.Draw(bg)
+    W, H = 244, 418
+    w, h = bg_draw.textsize(msg, font=font)
+    w2, h2 = bg_draw.textsize(msg2, font=font2)
+    bg_draw.text(((W-w)/2, 335), msg,
+                 font=font, fill='rgb(255, 255, 255)',
+                 stroke_width=1, stroke_fill='rgb(0, 0, 0)')
+    bg_draw.text(((W - w2) / 2, 360), msg2,
+                 font=font2, fill='rgb(255, 255, 255)',
+                 stroke_width=1, stroke_fill='rgb(0, 0, 0)')
+
+    result_bg = Image.open(UI_ART_PATH + 'resultbg_single.png')
+    y = 56
+    x = 387
+    card_location = (x, y)
+
+    result_bg.paste(bg, card_location, bg)
+
+    #result_bg.show()
+    return result_bg
+
+
+#generate_single_roll_image(print_roll_result_single(single_roll('servant_fes_rerun_2')))

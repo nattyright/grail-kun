@@ -72,7 +72,7 @@ async def calendar(ctx):
 
 
 @client.command()
-async def gacha(ctx):
+async def multi(ctx):
     global COOLDOWN
     author_id = '<@' + str(ctx.author.id) + '>'
 
@@ -85,7 +85,8 @@ async def gacha(ctx):
                 Select(placeholder="Available banners",
                        options=[SelectOption(label="Servant Fes Rerun #1", value="servant_fes_rerun_1"),
                                 SelectOption(label="Servant Fes Rerun #2", value="servant_fes_rerun_2"),
-                                SelectOption(label="Servant Fes Rerun #3", value="servant_fes_rerun_3")])
+                                SelectOption(label="Servant Fes Rerun #3", value="servant_fes_rerun_3"),
+                                SelectOption(label="Story Banner", value="story")])
             ]
         )
         interaction = await client.wait_for("select_option")
@@ -97,12 +98,52 @@ async def gacha(ctx):
         await ctx.channel.send('wait and cope ' + author_id)
 
 
+
+@client.command()
+async def single(ctx):
+    global COOLDOWN
+    author_id = '<@' + str(ctx.author.id) + '>'
+
+    if COOLDOWN:
+        COOLDOWN = False
+
+        msg_sent = await ctx.send(
+            "Pick a banner",
+            components=[
+                Select(placeholder="Available banners",
+                       options=[SelectOption(label="Servant Fes Rerun #1", value="servant_fes_rerun_1"),
+                                SelectOption(label="Servant Fes Rerun #2", value="servant_fes_rerun_2"),
+                                SelectOption(label="Servant Fes Rerun #3", value="servant_fes_rerun_3"),
+                                SelectOption(label="Story Banner", value="story")])
+            ]
+        )
+        interaction = await client.wait_for("select_option")
+        await msg_sent.delete()
+        await ctx.send(content='Generating 11-roll for ' + interaction.component[0].label + '...' + author_id)
+        await sent_single_roll_image(ctx, author_id, interaction.component[0].value)
+        COOLDOWN = True
+    else:
+        await ctx.channel.send('wait and cope ' + author_id)
+
+
+
+
 @client.event
 async def sent_ten_roll_image(message, author_id, banner_name):
     cards = gacha_fgo.print_roll_result(gacha_fgo.ten_roll(banner_name))
     cards_im = gacha_fgo.generate_ten_roll_image(cards)
     with BytesIO() as image_binary:
         cards_im.save(image_binary, 'PNG')
+        image_binary.seek(0)
+        await message.channel.send(content=author_id, file=discord.File(fp=image_binary, filename='image.png'))
+
+
+@client.event
+async def sent_single_roll_image(message, author_id, banner_name):
+    card = gacha_fgo.print_roll_result_single(gacha_fgo.single_roll(banner_name))
+    card_im = gacha_fgo.generate_single_roll_image(card)
+    with BytesIO() as image_binary:
+        card_im.save(image_binary, 'PNG')
         image_binary.seek(0)
         await message.channel.send(content=author_id, file=discord.File(fp=image_binary, filename='image.png'))
 
