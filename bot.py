@@ -1,9 +1,10 @@
 import discord
 import asyncio
 import os
-import time
 from dotenv import load_dotenv
 from io import BytesIO
+# downloading animu
+import os
 
 from discord.ext.commands import Bot
 from discord_components import DiscordComponents, Select, SelectOption
@@ -126,6 +127,18 @@ async def single(ctx):
         await ctx.channel.send('wait and cope ' + author_id)
 
 
+@client.command()
+async def cytube(ctx, source, episode):
+    command = "ssh -i .credentials/id_rsa root@135.148.2.69"
+    command += " 'anime dl "
+    command += '"'
+    command += source
+    command += '"'
+    command += ' --episodes '
+    command += episode
+    command += "'"
+    print(command)
+    os.system(command)
 
 
 @client.event
