@@ -8,7 +8,7 @@ def get_help_message():
                     {"name": "Admin Commands",
                      "value": "```f.calendar```Fetch server calendar."},
                     {"name": "User Commands",
-                     "value": "```f.multi```Salt sim (weak-willed).```f.single```Salt sim (strong-willed)."}
+                     "value": "```f.multi```Salt sim (weak-willed).```f.single```Salt sim (strong-willed).```f.cytube```[type] [source] [ep(optional)]"}
                 ]
             }
         ]
