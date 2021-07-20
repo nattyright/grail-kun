@@ -136,7 +136,6 @@ async def cytube(ctx, type, source, episode=""):
     else:
         command = "ssh -i .credentials/id_rsa root@135.148.2.69 'cd /var/www/h5ai && " + \
                   "./_h5ai/private/annie " + source + "'"
-    #print(command)
     os.system(command)
 
 
