@@ -128,16 +128,15 @@ async def single(ctx):
 
 
 @client.command()
-async def cytube(ctx, source, episode):
-    command = "ssh -i .credentials/id_rsa root@135.148.2.69"
-    command += " 'anime dl "
-    command += '"'
-    command += source
-    command += '"'
-    command += ' --episodes '
-    command += episode
-    command += "'"
-    print(command)
+async def cytube(ctx, type, source, episode=""):
+    if type == 'anime':
+        command = "ssh -i .credentials/id_rsa root@135.148.2.69 'anime dl "
+        command += '"' + source + '" --episodes ' + episode
+        command += "'"
+    else:
+        command = "ssh -i .credentials/id_rsa root@135.148.2.69 'cd /var/www/h5ai && " + \
+                  "./_h5ai/private/annie " + source + "'"
+    #print(command)
     os.system(command)
 
 
