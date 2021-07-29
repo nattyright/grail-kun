@@ -22,6 +22,15 @@ ENUM_ONGOING_EVENT = 0
 ENUM_UPCOMING_EVENT = 1
 
 
+# gacha bot banner options
+BANNER_LABEL_1 = "Las Vegas #1"
+BANNER_LABEL_2 = "Las Vegas #2"
+BANNER_LABEL_3 = "Las Vegas #3"
+BANNER_VALUE_1 = "las_vegas_1"
+BANNER_VALUE_2 = "las_vegas_2"
+BANNER_VALUE_3 = "las_vegas_3"
+
+
 #client = discord.Client()
 client = Bot(command_prefix="f.", help_command=None)
 #buttons and select option (not in official discord.py yet
@@ -84,9 +93,9 @@ async def multi(ctx):
             "Pick a banner",
             components=[
                 Select(placeholder="Available banners",
-                       options=[SelectOption(label="Servant Fes Rerun #1", value="servant_fes_rerun_1"),
-                                SelectOption(label="Servant Fes Rerun #2", value="servant_fes_rerun_2"),
-                                SelectOption(label="Servant Fes Rerun #3", value="servant_fes_rerun_3"),
+                       options=[SelectOption(label=BANNER_LABEL_1, value=BANNER_VALUE_1),
+                                SelectOption(label=BANNER_LABEL_2, value=BANNER_VALUE_2),
+                                SelectOption(label=BANNER_LABEL_3, value=BANNER_VALUE_3),
                                 SelectOption(label="Story Banner", value="story")])
             ]
         )
@@ -112,9 +121,9 @@ async def single(ctx):
             "Pick a banner",
             components=[
                 Select(placeholder="Available banners",
-                       options=[SelectOption(label="Servant Fes Rerun #1", value="servant_fes_rerun_1"),
-                                SelectOption(label="Servant Fes Rerun #2", value="servant_fes_rerun_2"),
-                                SelectOption(label="Servant Fes Rerun #3", value="servant_fes_rerun_3"),
+                       options=[SelectOption(label=BANNER_LABEL_1, value=BANNER_VALUE_1),
+                                SelectOption(label=BANNER_LABEL_2, value=BANNER_VALUE_2),
+                                SelectOption(label=BANNER_LABEL_3, value=BANNER_VALUE_3),
                                 SelectOption(label="Story Banner", value="story")])
             ]
         )
