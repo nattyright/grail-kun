@@ -16,6 +16,8 @@ FATERP_CAL_ID = 'vbmcbuagv8ul3fiii6n385ahhc@group.calendar.google.com'
 ENUM_ONGOING_EVENT = 0
 ENUM_UPCOMING_EVENT = 1
 
+TIME_MAX = '2021-12-01T10:00:08.236687Z'
+
 
 def update_calendar_message_id(channel_id, message_id):
     with open('data/msg_ids.json', 'r+', encoding='utf-8') as to_edit:
@@ -45,6 +47,8 @@ def get_calendar_events_as_json():
     # Call the Calendar API
     now = datetime.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
     now_plus_one_month = (datetime.datetime.utcnow() + datetime.timedelta(weeks=2)).isoformat() + 'Z'
+    # temporary for s3 signups period
+    now_plus_one_month = TIME_MAX
     #print('Getting the upcoming 10 events')
     events_result = service.events().list(calendarId=FATERP_CAL_ID,
                                         timeMin=now, timeMax=now_plus_one_month,
