@@ -23,15 +23,14 @@ ENUM_UPCOMING_EVENT = 1
 
 
 # gacha bot banner options
-BANNER_LABEL_1 = "Saber Wars 2 Pre-Release Pickup Summon"
-BANNER_LABEL_2 = "Saber Wars 2 Pickup 1 Summon"
-BANNER_LABEL_3 = "Saber Wars 2 Pickup 2 Summon"
-BANNER_VALUE_1 = "saber_wars_0"
-BANNER_VALUE_2 = "saber_wars_1"
-BANNER_VALUE_3 = "saber_wars_2"
-BANNER_VALUE_4 = "18m_dl"
-BANNER_VALUE_5 = "xmas_2021"
-BANNER_VALUE_6 = "interlude_11"
+BANNER_LABEL_1 = "15 Million Downloads Pickup Summon"
+BANNER_LABEL_2 = "Christmas 2021 Pickup Summon"
+BANNER_LABEL_3 = ""
+
+BANNER_VALUE_1 = "18m_dl"
+BANNER_VALUE_2 = "xmas_2021"
+BANNER_VALUE_3 = ""
+
 BANNER_VALUE_7 = "lb5_1"
 BANNER_VALUE_8 = "lb5_2"
 
@@ -100,7 +99,7 @@ async def multi(ctx):
                 Select(placeholder="Available banners",
                        options=[SelectOption(label=BANNER_LABEL_1, value=BANNER_VALUE_1),
                                 SelectOption(label=BANNER_LABEL_2, value=BANNER_VALUE_2),
-                                SelectOption(label=BANNER_LABEL_3, value=BANNER_VALUE_3),
+                                #SelectOption(label=BANNER_LABEL_3, value=BANNER_VALUE_3),
                                 SelectOption(label="Story Banner", value="story")])
             ]
         )
@@ -128,7 +127,7 @@ async def single(ctx):
                 Select(placeholder="Available banners",
                        options=[SelectOption(label=BANNER_LABEL_1, value=BANNER_VALUE_1),
                                 SelectOption(label=BANNER_LABEL_2, value=BANNER_VALUE_2),
-                                SelectOption(label=BANNER_LABEL_3, value=BANNER_VALUE_3),
+                                #SelectOption(label=BANNER_LABEL_3, value=BANNER_VALUE_3),
                                 SelectOption(label="Story Banner", value="story")])
             ]
         )
