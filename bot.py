@@ -12,7 +12,12 @@ from discord_components import DiscordComponents, Select, SelectOption
 import google_calendar
 import bot_help
 import gacha_fgo
+import mongodb_client
 
+# setup mongodb database
+db = mongodb_client.get_database()
+
+# setup calender
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
 CALENDAR_CHANNEL_ID = 0
@@ -21,8 +26,7 @@ CALENDAR_UPDATE_INTERVAL = 21600  # seconds, this is 6 hours
 ENUM_ONGOING_EVENT = 0
 ENUM_UPCOMING_EVENT = 1
 
-
-# gacha bot banner options
+# setup gacha bot banner options
 BANNER_LABEL_1 = "15 Million Downloads Pickup Summon"
 BANNER_LABEL_2 = "Christmas 2021 Pickup Summon"
 BANNER_LABEL_3 = ""
@@ -31,17 +35,30 @@ BANNER_VALUE_1 = "18m_dl"
 BANNER_VALUE_2 = "xmas_2021"
 BANNER_VALUE_3 = ""
 
-BANNER_VALUE_7 = "lb5_1"
-BANNER_VALUE_8 = "lb5_2"
+BANNER_VALUES = {"lb5_orion": "Lostbelt No.5 Atlantis Pickup Summon (S.Orion)",
+                 "lb5_europa": "Lostbelt No.5 Atlantis Pickup Summon (Europa)",
+                 "lb5_achilles": "Lostbelt No.5 Atlantis Pickup Summon 2",
+                 "newyear_2022": "New Year 2022 Pickup Summon (Yang Guifei)",
+                 "sparrow_benny": "Revival: Sparrow's Inn Pickup Summon (Beni)",
+                 "sparrow_tamamo": "Revival: Sparrow's Inn Pickup Summon (Tamamo)",
+                 "sparrow_assli": "Revival: Sparrow's Inn Pickup Summon 2",
+                 "amazones_cleo": "Amazoness Dot Com Pickup Summon (Cleo)",
+                 "amazones_neet": "Amazoness Dot Com Pickup Summon (Osakabehime)",
+                 "valentines_2022_singlerateup": "Valentine's 2022 Pickup Summon (Sei)",
+                 "19m_dl": "19 Mil Downloads Pickup Summon",
+                 "chaldea_boys_singlerateup": "Chaldea Boys Collection 2022 Pickup Summon (Odysseus)"
+                 }
 
-
-#client = discord.Client()
 client = Bot(command_prefix="f.", help_command=None)
-#buttons and select option (not in official discord.py yet
+# buttons and select option (not in official discord.py yet
 DiscordComponents(client)
 
-
 COOLDOWN = True
+
+
+"""
+Initialize bot
+"""
 
 
 @client.event
@@ -53,7 +70,6 @@ async def on_ready():
     # set up calendar
     CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID = google_calendar.get_calendar_message_id()
     client.loop.create_task(update_server_calendar())
-
 
 
 @client.command()
@@ -71,18 +87,60 @@ async def help(ctx):
     await ctx.channel.send(embed=embed)
 
 
-@client.command()
-async def calendar(ctx):
-    if not discord.utils.get(ctx.author.roles, name="Administrator") is None:
-        global CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID
-        msg_sent = await ctx.channel.send('Fetching server calendar...')
 
-        CALENDAR_CHANNEL_ID = msg_sent.channel.id
-        CALENDAR_MESSAGE_ID = msg_sent.id
-        google_calendar.update_calendar_message_id(CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID)
-        await update_server_calendar_once_only()
+
+"""
+Cytube commands
+"""
+
+
+@client.command()
+async def cytube(ctx, type, source, episode=""):
+    if type == 'anime':
+        command = "ssh -i .credentials/id_rsa root@135.148.2.69 'anime dl "
+        command += '"' + source + '" --episodes ' + episode
+        command += "'"
     else:
-        await ctx.channel.send('[ADMIN ROLE REQUIRED] :*)*')
+        command = "ssh -i .credentials/id_rsa root@135.148.2.69 'cd /var/www/h5ai && " + \
+                  "./_h5ai/private/annie " + source + "'"
+    os.system(command)
+
+
+"""
+Gacha commands
+"""
+
+
+def update_gacha_database(ctx, banner_id, roll_count):
+    get_gacha_data(db, ctx.author.id, banner_id, roll_count)
+
+
+def get_gacha_data(db, user_id, banner_id, roll_count=0):
+    user_details = db["fgogacha"].find_one({"userID": user_id, "bannerID": banner_id})
+    if not user_details:
+        # create new data or simply retrieve data if not rolling
+        create_gacha_data(db, user_id, banner_id, roll_count)
+    else:
+        if roll_count == 0:
+            pass
+        elif roll_count == 1:
+            single_count = user_details["single"] + 1
+            multi_count = user_details["multi"]
+            db["fgogacha"].update_one({"userID": user_id, "bannerID": banner_id}, {"$set": {"single": single_count}})
+        else:
+            single_count = user_details["single"]
+            multi_count = user_details["multi"] + 1
+            db["fgogacha"].update_one({"userID": user_id, "bannerID": banner_id}, {"$set": {"multi": multi_count}})
+
+
+def create_gacha_data(db, user_id, banner_id, roll_count):
+    # roll_count 0 means we're just getting data, not rolling
+    if roll_count == 0:
+        pass
+    elif roll_count == 1:
+        db["fgogacha"].insert_one({"userID": user_id, "bannerID": banner_id, "single": 1, "multi": 0})
+    else:
+        db["fgogacha"].insert_one({"userID": user_id, "bannerID": banner_id, "single": 0, "multi": 1})
 
 
 @client.command()
@@ -99,18 +157,20 @@ async def multi(ctx):
                 Select(placeholder="Available banners",
                        options=[SelectOption(label=BANNER_LABEL_1, value=BANNER_VALUE_1),
                                 SelectOption(label=BANNER_LABEL_2, value=BANNER_VALUE_2),
-                                #SelectOption(label=BANNER_LABEL_3, value=BANNER_VALUE_3),
+                                # SelectOption(label=BANNER_LABEL_3, value=BANNER_VALUE_3),
                                 SelectOption(label="Story Banner", value="story")])
             ]
         )
         interaction = await client.wait_for("select_option")
         await msg_sent.delete()
         await ctx.send(content='Generating 11-roll for ' + interaction.component[0].label + '...' + author_id)
+        # update database
+        update_gacha_database(ctx, interaction.component[0].value, 10)
+        # roll the gacha
         await sent_ten_roll_image(ctx, author_id, interaction.component[0].value)
         COOLDOWN = True
     else:
         await ctx.channel.send('wait and cope ' + author_id)
-
 
 
 @client.command()
@@ -127,29 +187,20 @@ async def single(ctx):
                 Select(placeholder="Available banners",
                        options=[SelectOption(label=BANNER_LABEL_1, value=BANNER_VALUE_1),
                                 SelectOption(label=BANNER_LABEL_2, value=BANNER_VALUE_2),
-                                #SelectOption(label=BANNER_LABEL_3, value=BANNER_VALUE_3),
+                                # SelectOption(label=BANNER_LABEL_3, value=BANNER_VALUE_3),
                                 SelectOption(label="Story Banner", value="story")])
             ]
         )
         interaction = await client.wait_for("select_option")
         await msg_sent.delete()
         await ctx.send(content='Generating single roll for ' + interaction.component[0].label + '...' + author_id)
+        # update database
+        update_gacha_database(ctx, interaction.component[0].value, 1)
+        # roll the gacha
         await sent_single_roll_image(ctx, author_id, interaction.component[0].value)
         COOLDOWN = True
     else:
         await ctx.channel.send('wait and cope ' + author_id)
-
-
-@client.command()
-async def cytube(ctx, type, source, episode=""):
-    if type == 'anime':
-        command = "ssh -i .credentials/id_rsa root@135.148.2.69 'anime dl "
-        command += '"' + source + '" --episodes ' + episode
-        command += "'"
-    else:
-        command = "ssh -i .credentials/id_rsa root@135.148.2.69 'cd /var/www/h5ai && " + \
-                  "./_h5ai/private/annie " + source + "'"
-    os.system(command)
 
 
 @client.event
@@ -170,6 +221,25 @@ async def sent_single_roll_image(message, author_id, banner_name):
         card_im.save(image_binary, 'PNG')
         image_binary.seek(0)
         await message.channel.send(content=author_id, file=discord.File(fp=image_binary, filename='image.png'))
+
+
+"""
+Calender commands
+"""
+
+
+@client.command()
+async def calendar(ctx):
+    if not discord.utils.get(ctx.author.roles, name="Administrator") is None:
+        global CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID
+        msg_sent = await ctx.channel.send('Fetching server calendar...')
+
+        CALENDAR_CHANNEL_ID = msg_sent.channel.id
+        CALENDAR_MESSAGE_ID = msg_sent.id
+        google_calendar.update_calendar_message_id(CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID)
+        await update_server_calendar_once_only()
+    else:
+        await ctx.channel.send('[ADMIN ROLE REQUIRED] :*)*')
 
 
 @client.event
@@ -216,7 +286,6 @@ async def update_server_calendar_once_only():
                     value=discord_embed["embeds"][0]["fields"][ENUM_UPCOMING_EVENT]["value"],
                     inline=False)
     await message.edit(embed=embed, content="")
-
 
 
 client.run(TOKEN)
