@@ -27,13 +27,13 @@ ENUM_ONGOING_EVENT = 0
 ENUM_UPCOMING_EVENT = 1
 
 # setup gacha bot banner options
-BANNER_LABEL_1 = "15 Million Downloads Pickup Summon"
-BANNER_LABEL_2 = "Christmas 2021 Pickup Summon"
-BANNER_LABEL_3 = ""
+BANNER_LABEL_1 = "Christmas 2021 Pickup Summon"
+BANNER_LABEL_2 = "Early Winter Campaign Pickup Summon (Ozymandias)"
+BANNER_LABEL_3 = "Early Winter Campaign Pickup Summon (Arthur)"
 
-BANNER_VALUE_1 = "18m_dl"
-BANNER_VALUE_2 = "xmas_2021"
-BANNER_VALUE_3 = ""
+BANNER_VALUE_1 = "xmas_2021"
+BANNER_VALUE_2 = "winter_fes_ozy"
+BANNER_VALUE_3 = "winter_fes_arthur"
 
 BANNER_VALUES = {"lb5_orion": "Lostbelt No.5 Atlantis Pickup Summon (S.Orion)",
                  "lb5_europa": "Lostbelt No.5 Atlantis Pickup Summon (Europa)",
@@ -157,7 +157,7 @@ async def multi(ctx):
                 Select(placeholder="Available banners",
                        options=[SelectOption(label=BANNER_LABEL_1, value=BANNER_VALUE_1),
                                 SelectOption(label=BANNER_LABEL_2, value=BANNER_VALUE_2),
-                                # SelectOption(label=BANNER_LABEL_3, value=BANNER_VALUE_3),
+                                SelectOption(label=BANNER_LABEL_3, value=BANNER_VALUE_3),
                                 SelectOption(label="Story Banner", value="story")])
             ]
         )
