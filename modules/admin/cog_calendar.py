@@ -1,3 +1,4 @@
+# imports for calendar
 from __future__ import print_function
 import datetime
 from googleapiclient.discovery import build
@@ -5,18 +6,96 @@ from oauth2client.service_account import ServiceAccountCredentials
 from httplib2 import Http
 import json
 
+# imports for cog
+import discord
+from discord.ext import commands, tasks
+
+
+# vars for cog
+CALENDAR_CHANNEL_ID = 0
+CALENDAR_MESSAGE_ID = 0
+ENUM_ONGOING_EVENT = 0
+ENUM_UPCOMING_EVENT = 1
+
+# vars for calendar
 # If modifying these scopes, delete the file token.json.
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
-
 SERVICE_ACC_FILE = ".credentials/faterp-bot-service-account-key.json"
 SERVICE_ACC_CREDENTIALS = ServiceAccountCredentials.from_json_keyfile_name(SERVICE_ACC_FILE, SCOPES)
 FATERP_CAL_ID = 'vbmcbuagv8ul3fiii6n385ahhc@group.calendar.google.com'
 
-
-ENUM_ONGOING_EVENT = 0
-ENUM_UPCOMING_EVENT = 1
-
 TIME_MAX = '2021-12-01T10:00:08.236687Z'
+
+
+class Calendar(commands.Cog):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+        self.update_server_calendar.start()
+
+        global CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID
+        CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID = get_calendar_message_id()
+
+    @commands.command()
+    async def calendar(self, ctx):
+        if not discord.utils.get(ctx.author.roles, name="Administrator") is None:
+            global CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID
+            msg_sent = await ctx.channel.send('Fetching server calendar...')
+
+            CALENDAR_CHANNEL_ID = msg_sent.channel.id
+            CALENDAR_MESSAGE_ID = msg_sent.id
+            update_calendar_message_id(CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID)
+            await self.update_server_calendar_once_only()
+        else:
+            await ctx.channel.send('[ADMIN ROLE REQUIRED] :*)*')
+
+    @tasks.loop(hours=6)
+    async def update_server_calendar(self):
+        global CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID
+        if CALENDAR_MESSAGE_ID != 0 and CALENDAR_CHANNEL_ID != 0:
+            message = await self.bot.get_channel(CALENDAR_CHANNEL_ID).fetch_message(CALENDAR_MESSAGE_ID)
+
+            discord_embed = get_calendar_events_as_json()
+
+            embed = discord.Embed(title="",
+                                  color=0)
+            embed.add_field(name="Server Time",
+                            value=discord_embed["content"],
+                            inline=False)
+            embed.add_field(name="Today's Events",
+                            value=discord_embed["embeds"][0]["fields"][ENUM_ONGOING_EVENT]["value"],
+                            inline=False)
+            embed.add_field(name="Upcoming Events",
+                            value=discord_embed["embeds"][0]["fields"][ENUM_UPCOMING_EVENT]["value"],
+                            inline=False)
+            await message.edit(embed=embed, content="")
+
+    @update_server_calendar.before_loop
+    async def before_update(self):
+        print('waiting...')
+        await self.bot.wait_until_ready()
+
+    async def update_server_calendar_once_only(self):
+        await self.bot.wait_until_ready()
+        global CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID
+        message = await self.bot.get_channel(CALENDAR_CHANNEL_ID).fetch_message(CALENDAR_MESSAGE_ID)
+        discord_embed = get_calendar_events_as_json()
+        embed = discord.Embed(title="",
+                              color=0)
+        embed.add_field(name="Server Time",
+                        value=discord_embed["content"],
+                        inline=False)
+        embed.add_field(name="Today's Events",
+                        value=discord_embed["embeds"][0]["fields"][ENUM_ONGOING_EVENT]["value"],
+                        inline=False)
+        embed.add_field(name="Upcoming Events",
+                        value=discord_embed["embeds"][0]["fields"][ENUM_UPCOMING_EVENT]["value"],
+                        inline=False)
+        await message.edit(embed=embed, content="")
+
+
+def setup(bot: commands.Bot):
+    bot.add_cog(Calendar(bot))
+
 
 
 def update_calendar_message_id(channel_id, message_id):

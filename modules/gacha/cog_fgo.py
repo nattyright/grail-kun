@@ -1,3 +1,10 @@
+# imports for cog
+import discord
+from discord.ext import commands
+from discord_components import Select, SelectOption
+from io import BytesIO
+
+# imports for gacha
 from datetime import datetime
 from time import sleep
 import random
@@ -6,6 +13,32 @@ from PIL import Image
 from PIL import ImageFont
 from PIL import ImageDraw
 
+# global vars for cog
+BANNER_LABEL_1 = "Christmas 2021 Pickup Summon"
+BANNER_LABEL_2 = "Early Winter Campaign Pickup Summon (Ozymandias)"
+BANNER_LABEL_3 = "Early Winter Campaign Pickup Summon (Arthur)"
+
+BANNER_VALUE_1 = "xmas_2021"
+BANNER_VALUE_2 = "winter_fes_ozy"
+BANNER_VALUE_3 = "winter_fes_arthur"
+
+BANNER_VALUES = {"lb5_orion": "Lostbelt No.5 Atlantis Pickup Summon (S.Orion)",
+                 "lb5_europa": "Lostbelt No.5 Atlantis Pickup Summon (Europa)",
+                 "lb5_achilles": "Lostbelt No.5 Atlantis Pickup Summon 2",
+                 "newyear_2022": "New Year 2022 Pickup Summon (Yang Guifei)",
+                 "sparrow_benny": "Revival: Sparrow's Inn Pickup Summon (Beni)",
+                 "sparrow_tamamo": "Revival: Sparrow's Inn Pickup Summon (Tamamo)",
+                 "sparrow_assli": "Revival: Sparrow's Inn Pickup Summon 2",
+                 "amazones_cleo": "Amazoness Dot Com Pickup Summon (Cleo)",
+                 "amazones_neet": "Amazoness Dot Com Pickup Summon (Osakabehime)",
+                 "valentines_2022_singlerateup": "Valentine's 2022 Pickup Summon (Sei)",
+                 "19m_dl": "19 Mil Downloads Pickup Summon",
+                 "chaldea_boys_singlerateup": "Chaldea Boys Collection 2022 Pickup Summon (Odysseus)"
+                 }
+
+COOLDOWN = True
+
+# global vars for gacha
 TEN_ROLL_COUNT = 11
 BANNER_TITLE = 'servant_fes_rerun_1'
 SERVANT_ART_PATH = 'data/images/fgo_servant/'
@@ -27,18 +60,149 @@ EMBED_RANK_SR = '★★★★'
 EMBED_RANK_R = '★★★'
 
 BANNER_DATA = {}
-RATES = {'SSR' : {'servant': 0, 'ce': 0}, 'SR': {'servant': 0, 'ce': 0}, 'R': {'servant': 0, 'ce': 0}}
-
+RATES = {'SSR': {'servant': 0, 'ce': 0}, 'SR': {'servant': 0, 'ce': 0}, 'R': {'servant': 0, 'ce': 0}}
 
 with open("data/fgo_servant.json", "r", encoding="utf-8") as to_read:
-    global FGO_SERVANT_DATA
     FGO_SERVANT_DATA = json.load(to_read)
 with open("data/fgo_ce.json", "r", encoding="utf-8") as to_read:
-    global FGO_CE_DATA
     FGO_CE_DATA = json.load(to_read)
 
 
-#get banner data
+class FGOGacha(commands.Cog):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+
+    @commands.command()
+    async def multi(self, ctx):
+        global COOLDOWN
+        author_id = '<@' + str(ctx.author.id) + '>'
+
+        if COOLDOWN:
+            COOLDOWN = False
+
+            msg_sent = await ctx.send(
+                "Pick a banner",
+                components=[
+                    Select(placeholder="Available banners",
+                           options=[SelectOption(label=BANNER_LABEL_1, value=BANNER_VALUE_1),
+                                    SelectOption(label=BANNER_LABEL_2, value=BANNER_VALUE_2),
+                                    SelectOption(label=BANNER_LABEL_3, value=BANNER_VALUE_3),
+                                    SelectOption(label="Story Banner", value="story")])
+                ]
+            )
+            interaction = await self.bot.wait_for("select_option")
+            await msg_sent.delete()
+            await ctx.send(content='Generating 11-roll for ' + interaction.component[0].label + '...' + author_id)
+            # update database
+            self.update_gacha_database(ctx.author.id, interaction.component[0].value, 10)
+            # roll the gacha
+            await FGOGacha.sent_ten_roll_image(ctx, author_id, interaction.component[0].value)
+            COOLDOWN = True
+        else:
+            await ctx.channel.send('wait and cope ' + author_id)
+
+    @commands.command()
+    async def single(self, ctx):
+        global COOLDOWN
+        author_id = '<@' + str(ctx.author.id) + '>'
+
+        if COOLDOWN:
+            COOLDOWN = False
+
+            msg_sent = await ctx.send(
+                "Pick a banner",
+                components=[
+                    Select(placeholder="Available banners",
+                           options=[SelectOption(label=BANNER_LABEL_1, value=BANNER_VALUE_1),
+                                    SelectOption(label=BANNER_LABEL_2, value=BANNER_VALUE_2),
+                                    SelectOption(label=BANNER_LABEL_3, value=BANNER_VALUE_3),
+                                    SelectOption(label="Story Banner", value="story")])
+                ]
+            )
+            interaction = await self.bot.wait_for("select_option")
+            await msg_sent.delete()
+            await ctx.send(content='Generating single roll for ' + interaction.component[0].label + '...' + author_id)
+            # update database
+            self.update_gacha_database(ctx.author.id, interaction.component[0].value, 1)
+            # roll the gacha
+            await FGOGacha.sent_single_roll_image(ctx, author_id, interaction.component[0].value)
+            COOLDOWN = True
+        else:
+            await ctx.channel.send('wait and cope ' + author_id)
+
+    @commands.command()
+    async def stats(self, ctx):
+        author_id = '<@' + str(ctx.author.id) + '>'
+
+        msg_sent = await ctx.send(
+            "Pick a banner",
+            components=[
+                Select(placeholder="Available banners",
+                       options=[SelectOption(label=BANNER_LABEL_1, value=BANNER_VALUE_1),
+                                SelectOption(label=BANNER_LABEL_2, value=BANNER_VALUE_2),
+                                SelectOption(label=BANNER_LABEL_3, value=BANNER_VALUE_3),
+                                SelectOption(label="Story Banner", value="story")])
+            ]
+        )
+        interaction = await self.bot.wait_for("select_option")
+        await msg_sent.delete()
+
+        data = self.bot.db["fgogacha"].find_one({"userID": ctx.author.id, "bannerID": interaction.component[0].value})
+        total_rolls = data["single"] + data["multi"] * 10
+        await ctx.send(content=author_id + ' has made ' + str(total_rolls) + ' rolls on ' + interaction.component[0].label)
+
+    def update_gacha_database(self, user_id, banner_id, roll_count=0):
+        user_details = self.bot.db["fgogacha"].find_one({"userID": user_id, "bannerID": banner_id})
+        if not user_details:
+            # create new data
+            if roll_count == 0:
+                pass
+            elif roll_count == 1:
+                self.bot.db["fgogacha"].insert_one({"userID": user_id, "bannerID": banner_id, "single": 1, "multi": 0})
+            else:
+                self.bot.db["fgogacha"].insert_one({"userID": user_id, "bannerID": banner_id, "single": 0, "multi": 1})
+        else:
+            # update existing data
+            if roll_count == 0:
+                pass
+            elif roll_count == 1:
+                single_count = user_details["single"] + 1
+                self.bot.db["fgogacha"].update_one({"userID": user_id, "bannerID": banner_id},
+                                                   {"$set": {"single": single_count}})
+            else:
+                multi_count = user_details["multi"] + 1
+                self.bot.db["fgogacha"].update_one({"userID": user_id, "bannerID": banner_id},
+                                                   {"$set": {"multi": multi_count}})
+
+    @staticmethod
+    async def sent_ten_roll_image(message, author_id, banner_name):
+        cards = print_roll_result(ten_roll(banner_name))
+        cards_im = generate_ten_roll_image(cards)
+        with BytesIO() as image_binary:
+            cards_im.save(image_binary, 'PNG')
+            image_binary.seek(0)
+            await message.channel.send(content=author_id, file=discord.File(fp=image_binary, filename='image.png'))
+
+    @staticmethod
+    async def sent_single_roll_image(message, author_id, banner_name):
+        card = print_roll_result_single(single_roll(banner_name))
+        card_im = generate_single_roll_image(card)
+        with BytesIO() as image_binary:
+            card_im.save(image_binary, 'PNG')
+            image_binary.seek(0)
+            await message.channel.send(content=author_id, file=discord.File(fp=image_binary, filename='image.png'))
+
+
+def setup(bot: commands.Bot):
+    bot.add_cog(FGOGacha(bot))
+
+
+"""
+GACHA
+"""
+
+
+# get banner data
 def get_banner_data(banner_name):
     with open("data/fgo_gacha.json", "r", encoding="utf-8") as to_read:
         global BANNER_DATA
@@ -51,8 +215,8 @@ def get_banner_data(banner_name):
         RATES['SSR']['ce'] = BANNER_DATA['SSR']['ce']['rate'] / 0.04
         RATES['SR']['ce'] = BANNER_DATA['SR']['ce']['rate'] / 0.12
         RATES['R']['ce'] = BANNER_DATA['R']['ce']['rate'] / 0.4
-        #print(RATES['SSR']['servant'],RATES['SR']['servant'],RATES['R']['servant'])
-        #print(RATES['SSR']['ce'],RATES['SR']['ce'],RATES['R']['ce'])
+        # print(RATES['SSR']['servant'],RATES['SR']['servant'],RATES['R']['servant'])
+        # print(RATES['SSR']['ce'],RATES['SR']['ce'],RATES['R']['ce'])
 
 
 def get_random_num():
@@ -61,10 +225,10 @@ def get_random_num():
     return random.random()
 
 
-def get_random_num_whole(range):
+def get_random_num_whole(num_range):
     sleep(0.05)
     random.seed(datetime.now())
-    return random.randrange(range)
+    return random.randrange(num_range)
 
 
 def summon_from_pool(card_type, card_rank, rand):
@@ -104,7 +268,7 @@ def summon_once_normally():
         # R CE 40%
         r = (rand - 0.0) / 0.4
         card = CE, 3, summon_from_pool('ce', 'R', r)
-    #print(r)
+    # print(r)
     return card
 
 
@@ -132,8 +296,6 @@ def summon_pity_servant():
     ssr_threshold = 1 - ssr_rate
     sr_rate = 3.0 / 44
     sr_threshold = ssr_threshold - sr_rate
-    r_rate = 40.0 / 44
-    r_threshold = sr_threshold - r_rate
 
     if rand >= ssr_threshold:
         # SSR Servant
@@ -197,13 +359,13 @@ def single_roll(banner_name):
 def print_roll_result(cards):
     embeds = []
     for card in cards:
-        id = str(card[2])
+        card_id = str(card[2])
         if card[0] == SERVANT:
-            url = SERVANT_ART_PATH + str(id).zfill(3) + '.png'
-            class_name = FGO_SERVANT_DATA[id]['className']
+            url = SERVANT_ART_PATH + str(card_id).zfill(3) + '.png'
+            class_name = FGO_SERVANT_DATA[card_id]['className']
         else:
-            url = CE_ART_PATH + str(id).zfill(3) + '.png'
-            class_name = FGO_CE_DATA[id]['className']
+            url = CE_ART_PATH + str(card_id).zfill(3) + '.png'
+            class_name = FGO_CE_DATA[card_id]['className']
 
         embed = {'url': url, 'className': class_name}
         if card[1] == SSR:
@@ -218,14 +380,14 @@ def print_roll_result(cards):
 
 
 def print_roll_result_single(card):
-    id = str(card[2])
+    card_id = str(card[2])
 
     if card[0] == SERVANT:
-        url = SERVANT_CHARAGRAPH_PATH + str(id) + '.png'
-        class_name = FGO_SERVANT_DATA[id]['className']
+        url = SERVANT_CHARAGRAPH_PATH + str(card_id) + '.png'
+        class_name = FGO_SERVANT_DATA[card_id]['className']
     else:
-        url = CE_CHARAGRAPH_PATH + str(id) + '.png'
-        class_name = FGO_CE_DATA[id]['className']
+        url = CE_CHARAGRAPH_PATH + str(card_id) + '.png'
+        class_name = FGO_CE_DATA[card_id]['className']
 
     embed = {'url': url, 'className': class_name}
     if card[1] == SSR:
@@ -239,20 +401,22 @@ def print_roll_result_single(card):
 
 
 def get_bg_path(rank):
-    return UI_ART_PATH + 'cardgold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'cardsilver.png'
+    return UI_ART_PATH + 'cardgold.png' if (
+            rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'cardsilver.png'
 
 
 def get_frame_path(rank):
     return UI_ART_PATH + 'cardgoldframe.png' if (
-                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'cardsilverframe.png'
+            rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'cardsilverframe.png'
 
 
 def get_label_path(rank, class_name):
     if class_name == 'ce':
-        return UI_ART_PATH + 'cegold.png' if (rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'cesilver.png'
+        return UI_ART_PATH + 'cegold.png' if (
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'cesilver.png'
     else:
         return UI_ART_PATH + 'servantgold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'servantsilver.png'
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'servantsilver.png'
 
 
 def get_stars_path(rank):
@@ -267,40 +431,40 @@ def get_stars_path(rank):
 def get_class_path(rank, class_name):
     if class_name == 'saber':
         return UI_ART_PATH + 'classsabergold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classsabersilver.png'
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classsabersilver.png'
     elif class_name == 'archer':
         return UI_ART_PATH + 'classarchergold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classarchersilver.png'
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classarchersilver.png'
     elif class_name == 'lancer':
         return UI_ART_PATH + 'classlancergold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classlancersilver.png'
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classlancersilver.png'
     elif class_name == 'rider':
         return UI_ART_PATH + 'classridergold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classridersilver.png'
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classridersilver.png'
     elif class_name == 'caster':
         return UI_ART_PATH + 'classcastergold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classcastersilver.png'
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classcastersilver.png'
     elif class_name == 'assassin':
         return UI_ART_PATH + 'classassassingold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classassassinsilver.png'
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classassassinsilver.png'
     elif class_name == 'berserker':
         return UI_ART_PATH + 'classberserkergold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classberserkersilver.png'
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classberserkersilver.png'
     elif class_name == 'ruler':
         return UI_ART_PATH + 'classrulergold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classrulersilver.png'
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classrulersilver.png'
     elif class_name == 'avenger':
         return UI_ART_PATH + 'classavengergold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classavengersilver.png'
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classavengersilver.png'
     elif class_name == 'moonCancer':
         return UI_ART_PATH + 'classmooncancergold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classmooncancersilver.png'
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classmooncancersilver.png'
     elif class_name == 'alterEgo':
         return UI_ART_PATH + 'classalteregogold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classalteregosilver.png'
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classalteregosilver.png'
     elif class_name == 'foreigner':
         return UI_ART_PATH + 'classforeignergold.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classforeignersilver.png'
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classforeignersilver.png'
     else:
         return UI_ART_PATH + "classce.png"
 
@@ -316,7 +480,7 @@ def generate_ten_roll_image(results):
         url = result['url']
 
         bg = Image.open(get_bg_path(rank))
-        card_art = Image.open(url) #downloaded img in directory - open directly
+        card_art = Image.open(url)  # downloaded img in directory - open directly
         frame = Image.open(get_frame_path(rank))
         label = Image.open(get_label_path(rank, class_name))
         stars = Image.open(get_stars_path(rank))
@@ -353,8 +517,8 @@ def generate_ten_roll_image(results):
     # result_bg.show()
     return result_bg
 
-# generate_ten_roll_image(print_roll_result(ten_roll()))
 
+# generate_ten_roll_image(print_roll_result(ten_roll()))
 
 
 def get_bg_path_single(class_name):
@@ -386,40 +550,43 @@ def get_frame_path_single(rank, class_name):
 def get_class_path_single(rank, class_name):
     if class_name == 'saber':
         return UI_ART_PATH + 'classsabergold_charagraph.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classsabersilver_charagraph.png'
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classsabersilver_charagraph.png'
     elif class_name == 'archer':
         return UI_ART_PATH + 'classarchergold_charagraph.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classarchersilver_charagraph.png'
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classarchersilver_charagraph.png'
     elif class_name == 'lancer':
         return UI_ART_PATH + 'classlancergold_charagraph.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classlancersilver_charagraph.png'
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classlancersilver_charagraph.png'
     elif class_name == 'rider':
         return UI_ART_PATH + 'classridergold_charagraph.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classridersilver_charagraph.png'
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classridersilver_charagraph.png'
     elif class_name == 'caster':
         return UI_ART_PATH + 'classcastergold_charagraph.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classcastersilver_charagraph.png'
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classcastersilver_charagraph.png'
     elif class_name == 'assassin':
         return UI_ART_PATH + 'classassassingold_charagraph.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classassassinsilver_charagraph.png'
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classassassinsilver_charagraph.png'
     elif class_name == 'berserker':
         return UI_ART_PATH + 'classberserkergold_charagraph.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classberserkersilver_charagraph.png'
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classberserkersilver_charagraph' \
+                                                                                    '.png '
     elif class_name == 'ruler':
         return UI_ART_PATH + 'classrulergold_charagraph.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classrulersilver_charagraph.png'
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classrulersilver_charagraph.png'
     elif class_name == 'avenger':
         return UI_ART_PATH + 'classavengergold_charagraph.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classavengersilver_charagraph.png'
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classavengersilver_charagraph.png'
     elif class_name == 'moonCancer':
         return UI_ART_PATH + 'classmooncancergold_charagraph.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classmooncancersilver_charagraph.png'
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classmooncancersilver_charagraph' \
+                                                                                    '.png '
     elif class_name == 'alterEgo':
         return UI_ART_PATH + 'classalteregogold_charagraph.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classalteregosilver_charagraph.png'
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classalteregosilver_charagraph.png'
     elif class_name == 'foreigner':
         return UI_ART_PATH + 'classforeignergold_charagraph.png' if (
-                    rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classforeignersilver_charagraph.png'
+                rank == EMBED_RANK_SSR or rank == EMBED_RANK_SR) else UI_ART_PATH + 'classforeignersilver_charagraph' \
+                                                                                    '.png '
     else:
         return UI_ART_PATH + "classce.png"
 
@@ -427,13 +594,12 @@ def get_class_path_single(rank, class_name):
 # use pillow to make a roll image with the results in
 # print_roll_results
 def generate_single_roll_image(result):
-
     rank = result['value']
     class_name = result['className']
     url = result['url']
 
     bg = Image.open(get_bg_path_single(class_name))
-    card_art = Image.open(url) #downloaded img in directory - open directly
+    card_art = Image.open(url)  # downloaded img in directory - open directly
     frame = Image.open(get_frame_path_single(rank, class_name))
     class_art = Image.open(get_class_path_single(rank, class_name))
 
@@ -452,7 +618,7 @@ def generate_single_roll_image(result):
     W, H = 244, 418
     w, h = bg_draw.textsize(msg, font=font)
     w2, h2 = bg_draw.textsize(msg2, font=font2)
-    bg_draw.text(((W-w)/2, 335), msg,
+    bg_draw.text(((W - w) / 2, 335), msg,
                  font=font, fill='rgb(255, 255, 255)',
                  stroke_width=1, stroke_fill='rgb(0, 0, 0)')
     bg_draw.text(((W - w2) / 2, 360), msg2,
@@ -466,8 +632,7 @@ def generate_single_roll_image(result):
 
     result_bg.paste(bg, card_location, bg)
 
-    #result_bg.show()
+    # result_bg.show()
     return result_bg
 
-
-#generate_single_roll_image(print_roll_result_single(single_roll('servant_fes_rerun_2')))
+# generate_single_roll_image(print_roll_result_single(single_roll('servant_fes_rerun_2')))
