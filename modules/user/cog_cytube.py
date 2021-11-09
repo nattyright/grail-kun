@@ -7,7 +7,7 @@ class Cytube(commands.Cog):
         self.bot = bot
 
     @commands.command()
-    async def cytube2(self, ctx, show_type, source, episode=""):
+    async def cytube(self, ctx, show_type, source, episode=""):
         if show_type == 'anime':
             command = "ssh -i .credentials/id_rsa root@135.148.2.69 'anime dl "
             command += '"' + source + '" --episodes ' + episode
