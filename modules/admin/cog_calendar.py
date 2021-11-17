@@ -127,7 +127,7 @@ def get_calendar_events_as_json():
     now = datetime.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
     now_plus_one_month = (datetime.datetime.utcnow() + datetime.timedelta(weeks=2)).isoformat() + 'Z'
     # temporary for s3 signups period
-    now_plus_one_month = TIME_MAX
+    # now_plus_one_month = TIME_MAX
     #print('Getting the upcoming 10 events')
     events_result = service.events().list(calendarId=FATERP_CAL_ID,
                                         timeMin=now, timeMax=now_plus_one_month,

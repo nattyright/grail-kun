@@ -10,7 +10,7 @@ class Help(commands.Cog):
                 "color": 0,
                 "fields": [
                     {"name": "Admin Commands",
-                     "value": "```f.calendar```Fetch server calendar."},
+                     "value": "```f.calendar```Fetch server calendar.```f.checkin @user``````f.checkindel @user``````f.checkinimg```S3 activity tracker"},
                     {"name": "User Commands",
                      "value": "```f.multi```Salt sim (weak-willed).```f.single```Salt sim (strong-willed).```f.cytube```[type] [source] [ep(optional)]"}
                 ]
