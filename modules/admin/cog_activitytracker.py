@@ -31,12 +31,13 @@ class ActivityTracker(commands.Cog):
                 name = ctx.message.mentions[0].display_name
 
                 if id not in TRACKER_DATA:
-                    TRACKER_DATA[id] = {}
-                    TRACKER_DATA[id]['NAME'] = name
-                    TRACKER_DATA[id]['ACTIVITY'] = [get_cycle_count()]
+                    if get_cycle_count() > 0:
+                        TRACKER_DATA[id] = {}
+                        TRACKER_DATA[id]['NAME'] = name
+                        TRACKER_DATA[id]['ACTIVITY'] = [get_cycle_count()]
                 else:
                     TRACKER_DATA[id]['NAME'] = name
-                    if TRACKER_DATA[id]['ACTIVITY'][-1] != get_cycle_count():
+                    if 0 < get_cycle_count() != [id]['ACTIVITY'][-1]:
                         TRACKER_DATA[id]['ACTIVITY'].append(get_cycle_count())
 
                 await ctx.channel.send('Tracker updated')
