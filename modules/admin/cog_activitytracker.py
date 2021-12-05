@@ -24,7 +24,7 @@ class ActivityTracker(commands.Cog):
         self.bot = bot
 
     @commands.command()
-    async def clockin(self, ctx):
+    async def checkin(self, ctx):
         if not discord.utils.get(ctx.author.roles, name="Administrator") is None:
             try:
                 id = str(ctx.message.mentions[0].id)
@@ -37,7 +37,7 @@ class ActivityTracker(commands.Cog):
                         TRACKER_DATA[id]['ACTIVITY'] = [get_cycle_count()]
                 else:
                     TRACKER_DATA[id]['NAME'] = name
-                    if 0 < get_cycle_count() != [id]['ACTIVITY'][-1]:
+                    if not TRACKER_DATA[id]['ACTIVITY'] or 0 < get_cycle_count() != TRACKER_DATA[id]['ACTIVITY'][-1]:
                         TRACKER_DATA[id]['ACTIVITY'].append(get_cycle_count())
 
                 await ctx.channel.send('Tracker updated')
@@ -53,7 +53,7 @@ class ActivityTracker(commands.Cog):
             await ctx.channel.send('[ADMIN ROLE REQUIRED] :*)*')
 
     @commands.command()
-    async def clockinimg(self, ctx):
+    async def checkinimg(self, ctx):
         img = get_base_tracker_image()
         with BytesIO() as image_binary:
             img.save(image_binary, 'PNG')
@@ -62,7 +62,7 @@ class ActivityTracker(commands.Cog):
 
 
     @commands.command()
-    async def clockindel(self, ctx):
+    async def checkindel(self, ctx):
         if not discord.utils.get(ctx.author.roles, name="Administrator") is None:
             try:
                 id = str(ctx.message.mentions[0].id)
