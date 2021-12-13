@@ -49,14 +49,14 @@ class AutoReply(commands.Cog):
         str4 = "__Character Creation__\n"
         str5 = "For character creation rules and templates, please use " + \
         char_guidelines + " and " + servant_params + ". It is strongly encouraged that " + \
-        "you give " + server_lore + "a read as well, as many questions can be answered " + \
+        "you give " + server_lore + " a read as well, as many questions can be answered " + \
         "with our lore. If you have any additional questions regarding character " + \
         "creation, please use " + char_help + ". Mods and other members will do their " + \
-        "to provide assistance.\n\n"
+        "best to provide assistance.\n\n"
 
         str6 = "__Current Season Info__\n"
         str7 = "For additional lore and rules on the current season, you may look at " + \
-        cur_season_rules + ", " + cur_season_map + ", and" + cur_season_plot + \
+        cur_season_rules + ", " + cur_season_map + ", and " + cur_season_plot + \
         ". Approved character sheets for the current season can be found at " + \
         cur_season_chars + ".\n\n"
 
