@@ -24,11 +24,12 @@ class Help(commands.Cog):
 
                     {"name": "User Commands",
                      "value": "*Server Gacha*\n"
-                              "` f.multi:` salt simulator (weak-willed)\n"
-                              "`f.single:` salt simulator (strong-willed)\n"
-                              "` f.stats:` salt simulator stats (soul crushing)\n"
+                              "`  f.multi:` salt simulator (weak-willed)\n"
+                              "` f.single:` salt simulator (strong-willed)\n"
+                              "`  f.stats:` salt simulator stats (soul crushing)\n"
                               "*Misc.*\n"
-                              "`f.cytube:` [type] [source] [ep(optional)]"}
+                              "`f.newhelp:` helper message for new members\n"
+                              "` f.cytube:` [type] [source] [ep(optional)]"}
                 ]
             }
         ]
