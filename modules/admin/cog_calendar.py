@@ -37,7 +37,7 @@ class Calendar(commands.Cog):
 
     @commands.command()
     async def calendar(self, ctx):
-        if not discord.utils.get(ctx.author.roles, name="Administrator") is None:
+        if not discord.utils.get(ctx.author.roles, name="Global Moderator") is None:
             global CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID
             msg_sent = await ctx.channel.send('Fetching server calendar...')
 

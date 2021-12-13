@@ -9,10 +9,26 @@ class Help(commands.Cog):
                 "title": "Help Message",
                 "color": 0,
                 "fields": [
-                    {"name": "Admin Commands",
-                     "value": "```f.calendar```Fetch server calendar.```f.checkin @user``````f.checkindel @user``````f.checkinimg```S3 activity tracker"},
+                    {"name": "Mod Commands",
+                     "value": "*Server Management*\n"
+                              "`        f.calendar:` fetch server calendar in the current channel\n"
+                              "`      f.jail @user:` drop @user in the unhorny jail\n"
+                              
+                              "*Sheet Review*\n"
+                              "`    f.review @user:` create hidden review channel for mods and @user\n"
+                              
+                              "*Season 3 RP Management*\n"
+                              "`   f.checkin @user:` check-in @user for the current cycle\n"
+                              "`f.checkindel @user:` remove check-in for @user for the current cycle\n"
+                              "`      f.checkinimg:` display season 3 activity tracker\n"},
+
                     {"name": "User Commands",
-                     "value": "```f.multi```Salt sim (weak-willed).```f.single```Salt sim (strong-willed).```f.cytube```[type] [source] [ep(optional)]"}
+                     "value": "*Server Gacha*\n"
+                              "` f.multi:` salt simulator (weak-willed)\n"
+                              "`f.single:` salt simulator (strong-willed)\n"
+                              "` f.stats:` salt simulator stats (soul crushing)\n"
+                              "*Misc.*\n"
+                              "`f.cytube:` [type] [source] [ep(optional)]"}
                 ]
             }
         ]
@@ -27,12 +43,12 @@ class Help(commands.Cog):
 
         embed = discord.Embed(title="",
                               color=0)
-        embed.add_field(name="Admin Commands",
-                        value=discord_embed["embeds"][0]["fields"][0]["value"],
-                        inline=False)
-        embed.add_field(name="User Commands",
-                        value=discord_embed["embeds"][0]["fields"][1]["value"],
-                        inline=False)
+
+        for item in discord_embed["embeds"][0]["fields"]:
+            embed.add_field(name=item["name"],
+                            value=item["value"],
+                            inline=False)
+
         await ctx.channel.send(embed=embed)
 
 
