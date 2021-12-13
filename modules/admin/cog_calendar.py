@@ -36,7 +36,7 @@ class Calendar(commands.Cog):
         CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID = get_calendar_message_id()
 
     @commands.command()
-    async def calendar(self, ctx):
+    async def calendar2(self, ctx):
         if not discord.utils.get(ctx.author.roles, name="Global Moderator") is None:
             global CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID
             msg_sent = await ctx.channel.send('Fetching server calendar...')
@@ -48,7 +48,7 @@ class Calendar(commands.Cog):
         else:
             await ctx.channel.send('[ADMIN ROLE REQUIRED] :*)*')
 
-    @tasks.loop(hours=6)
+    @tasks.loop(minutes=1)
     async def update_server_calendar(self):
         global CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID
         if CALENDAR_MESSAGE_ID != 0 and CALENDAR_CHANNEL_ID != 0:
@@ -176,9 +176,11 @@ def get_calendar_events_as_json():
             else:
                 upcoming_event_message += event['summary'] + '\n'
     #print(upcoming_event_message)
+    #datetime.datetime.utcnow().replace(second=0, microsecond=0).isoformat()[:-3]
+    cur_time = datetime.datetime.utcnow().strftime("%Y-%m-%d, %I:%M %p")
 
     discord_embed = {
-        "content": datetime.datetime.utcnow().date().isoformat(),
+        "content": cur_time,
         "embeds": [
             {
                 "title": "Server Calendar",
