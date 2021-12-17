@@ -70,7 +70,6 @@ class PostLog(commands.Cog):
 
     async def initiate_postlog(self):
         for guild in self.bot.guilds:
-            print(guild, 'guild')
             for channel in guild.channels:
                 if str(channel.category) in ["nature reserve: forest",
                                              "nature reserve: tropic",
@@ -80,8 +79,12 @@ class PostLog(commands.Cog):
                                              "nature reserve: lake",
                                              "The Canopus",
                                              "Rest of the world"]:
-                    last_message = await channel.fetch_message(channel.last_message_id)
-                    self.threads[channel.id] = last_message.created_at
+
+                    # check if channel is empty
+                    channel_not_empty = await channel.history(limit=1).flatten()
+                    if channel_not_empty:
+                        last_message = await channel.fetch_message(channel.last_message_id)
+                        self.threads[channel.id] = last_message.created_at
 
     async def update_postlog(self):
 
