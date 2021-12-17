@@ -35,19 +35,7 @@ class PostLog(commands.Cog):
     @update_threads.before_loop
     async def before_update(self):
         await self.bot.wait_until_ready()
-
-        for guild in self.bot.guilds:
-            for channel in guild.channels:
-                if str(channel.category) in ["nature reserve: forest",
-                                             "nature reserve: tropic",
-                                             "nature reserve: snow",
-                                             "nature reserve: swamp",
-                                             "nature reserve: desert",
-                                             "nature reserve: lake",
-                                             "The Canopus",
-                                             "Rest of the world"]:
-                    last_message = await channel.fetch_message(channel.last_message_id)
-                    self.threads[channel.id] = last_message.created_at
+        await self.initiate_postlog()
 
     @commands.command()
     async def postlog(self, ctx):
@@ -57,6 +45,7 @@ class PostLog(commands.Cog):
             self.postlog_channel_id = msg_sent.channel.id
             self.postlog_message_id = msg_sent.id
             update_postlog_message_id(self.postlog_channel_id, self.postlog_message_id)
+            await self.initiate_postlog()
             await self.update_postlog()
         else:
             await ctx.channel.send('[MOD ROLE REQUIRED] :*)*')
@@ -76,6 +65,20 @@ class PostLog(commands.Cog):
 
             # update displayed log
             await self.update_postlog()
+
+    async def initiate_postlog(self):
+        for guild in self.bot.guilds:
+            for channel in guild.channels:
+                if str(channel.category) in ["nature reserve: forest",
+                                             "nature reserve: tropic",
+                                             "nature reserve: snow",
+                                             "nature reserve: swamp",
+                                             "nature reserve: desert",
+                                             "nature reserve: lake",
+                                             "The Canopus",
+                                             "Rest of the world"]:
+                    last_message = await channel.fetch_message(channel.last_message_id)
+                    self.threads[channel.id] = last_message.created_at
 
     async def update_postlog(self):
 
