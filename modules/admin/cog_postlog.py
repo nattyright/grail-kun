@@ -102,18 +102,23 @@ class PostLog(commands.Cog):
             hour_count = divmod(day_count[1], 3600)
             minute_count = divmod(hour_count[1], 60)
 
-            text = "<#" + str(channel_id) + ">: updated "
-            if day_count[0] > 0:
-                text += str(day_count[0]).split(".")[0] + " days, "
-            if hour_count[0] > 0:
-                text += str(hour_count[0]).split(".")[0] + " hrs, "
-            text += str(minute_count[0]).split(".")[0] + " mins ago\n"
+            text = "<#" + str(channel_id) + ">"
 
             # active thread
             if day_count[0] < 7:
+
+                text += ": updated "
+                if day_count[0] > 0:
+                    text += str(day_count[0]).split(".")[0] + " days, "
+                if hour_count[0] > 0:
+                    text += str(hour_count[0]).split(".")[0] + " hrs, "
+                text += str(minute_count[0]).split(".")[0] + " mins ago\n"
+
                 embed_active_threads += text
             # inactive thread
             else:
+                text += "\n"
+
                 embed_inactive_threads += text
 
         if embed_active_threads == "":
