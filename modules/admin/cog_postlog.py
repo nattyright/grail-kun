@@ -70,6 +70,7 @@ class PostLog(commands.Cog):
 
     async def initiate_postlog(self):
         for guild in self.bot.guilds:
+            print(guild, 'guild')
             for channel in guild.channels:
                 if str(channel.category) in ["nature reserve: forest",
                                              "nature reserve: tropic",
