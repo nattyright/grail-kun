@@ -35,7 +35,8 @@ class PostLog(commands.Cog):
     @update_threads.before_loop
     async def before_update(self):
         await self.bot.wait_until_ready()
-        await self.initiate_postlog()
+        if not self.threads:
+            await self.initiate_postlog()
 
     @commands.command()
     async def postlog(self, ctx):
@@ -45,7 +46,8 @@ class PostLog(commands.Cog):
             self.postlog_channel_id = msg_sent.channel.id
             self.postlog_message_id = msg_sent.id
             update_postlog_message_id(self.postlog_channel_id, self.postlog_message_id)
-            await self.initiate_postlog()
+            if not self.threads:
+                await self.initiate_postlog()
             await self.update_postlog()
         else:
             await ctx.channel.send('[MOD ROLE REQUIRED] :*)*')
