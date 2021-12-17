@@ -28,19 +28,6 @@ class PostLog(commands.Cog):
         # looped task
         self.update_threads.start()
 
-    def init_postlog(self):
-        all_channels = self.bot.get_all_channels()
-        for channel in all_channels:
-            if channel.category.name in ["nature reserve: forest",
-                                 "nature reserve: tropic",
-                                 "nature reserve: snow",
-                                 "nature reserve: swamp",
-                                 "nature reserve: desert",
-                                 "nature reserve: lake",
-                                 "The Canopus",
-                                 "Rest of the world"]:
-                print(channel)
-
     @tasks.loop(minutes=1)
     async def update_threads(self):
         await self.update_postlog()
@@ -96,21 +83,20 @@ class PostLog(commands.Cog):
         embed_inactive_threads = ""
         cur_time = datetime.utcnow()
 
-        for channel_id, post_time in self.threads.items():
+        for channel_id in sorted(self.threads, key=self.threads.get, reverse=True):
+            post_time = self.threads[channel_id]
 
             time_delta = (cur_time - post_time).total_seconds()
             day_count = divmod(time_delta, 86400)
             hour_count = divmod(day_count[1], 3600)
             minute_count = divmod(hour_count[1], 60)
 
-            text = "<#" + str(channel_id) + ">: last post "
+            text = "<#" + str(channel_id) + ">: updated "
             if day_count[0] > 0:
                 text += str(day_count[0]).split(".")[0] + " days, "
             if hour_count[0] > 0:
                 text += str(hour_count[0]).split(".")[0] + " hrs, "
-            if minute_count[0] > 0:
-                text += str(minute_count[0]).split(".")[0] + " mins "
-            text += "ago\n"
+            text += str(minute_count[0]).split(".")[0] + " mins ago\n"
 
             # active thread
             if day_count[0] < 7:
