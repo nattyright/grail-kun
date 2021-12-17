@@ -81,6 +81,8 @@ class PostLog(commands.Cog):
                                              "Rest of the world"]:
 
                     # check if channel is empty
+                    print("hhaha")
+                    print(channel.name)
                     channel_not_empty = await channel.history(limit=1).flatten()
                     if channel_not_empty:
                         last_message = channel_not_empty[0]
