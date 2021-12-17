@@ -81,12 +81,12 @@ class PostLog(commands.Cog):
                                              "Rest of the world"]:
 
                     # check if channel is empty
-                    print("hhaha")
-                    print(channel.name)
                     channel_not_empty = await channel.history(limit=1).flatten()
                     if channel_not_empty:
                         last_message = channel_not_empty[0]
-                        self.threads[channel.id] = last_message.created_at
+                        # check if the message is an RP post (aka, not admin)
+                        if not discord.utils.get(last_message.author.roles, name="Administrator") is None:
+                            self.threads[channel.id] = last_message.created_at
 
     async def update_postlog(self):
 
