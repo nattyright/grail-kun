@@ -83,7 +83,7 @@ class PostLog(commands.Cog):
                     # check if channel is empty
                     channel_not_empty = await channel.history(limit=1).flatten()
                     if channel_not_empty:
-                        last_message = await channel.fetch_message(channel.last_message_id)
+                        last_message = channel_not_empty[0]
                         self.threads[channel.id] = last_message.created_at
 
     async def update_postlog(self):
