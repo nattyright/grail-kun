@@ -87,6 +87,12 @@ class PostLog(commands.Cog):
                         # check if the message is an RP post (aka from bot)
                         if last_message.author.bot:
                             self.threads[channel.id] = last_message.created_at
+                        else:
+                            # if not bot, get member and check if mod
+                            id = str(last_message.author.id)
+                            member = await guild.fetch_member(id)
+                            if discord.utils.get(member.roles, name="Global Moderator") is None:
+                                self.threads[channel.id] = last_message.created_at
 
     async def update_postlog(self):
 
