@@ -111,7 +111,7 @@ class PostLog(commands.Cog):
             text = "<#" + str(channel_id) + ">"
 
             # active thread
-            if day_count[0] < 7:
+            if day_count[0] < 4:
 
                 text += ": updated "
                 if day_count[0] > 0:
@@ -147,13 +147,6 @@ class PostLog(commands.Cog):
 
 def setup(bot: commands.Bot):
     bot.add_cog(PostLog(bot))
-
-
-def thread_is_active(post_time):
-    # last post within 7 days
-    cur_time = datetime.utcnow()
-    day_count = math.ceil((cur_time - post_time).days)
-    return day_count < 7
 
 
 def get_postlog_message_id():
