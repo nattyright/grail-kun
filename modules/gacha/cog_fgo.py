@@ -14,13 +14,13 @@ from PIL import ImageFont
 from PIL import ImageDraw
 
 # global vars for cog
-BANNER_LABEL_3 = "Revival: Sparrow's Inn Pickup Summon (Beni)"
-BANNER_LABEL_1 = "New Year 2022 Pickup Summon (Yang Guifei)"
-BANNER_LABEL_2 = "Christmas 2021 Pickup Summon"
+BANNER_LABEL_1 = "Amazoness Dot Com Pickup Summon (Cleo)"
+BANNER_LABEL_2 = "Amazoness Dot Com Pickup Summon (Osakabehime)"
+BANNER_LABEL_3 = "Valentine's 2022 Pickup Summon (Sei)"
 
-BANNER_VALUE_3 = "sparrow_benny"
-BANNER_VALUE_1 = "newyear_2022"
-BANNER_VALUE_2 = "xmas_2021"
+BANNER_VALUE_1 = "amazones_cleo"
+BANNER_VALUE_2 = "amazones_neet"
+BANNER_VALUE_3 = "valentines_2022_singlerateup"
 
 BANNER_VALUES = {"lb5_orion": "Lostbelt No.5 Atlantis Pickup Summon (S.Orion)",
                  "lb5_europa": "Lostbelt No.5 Atlantis Pickup Summon (Europa)",

@@ -152,9 +152,11 @@ class PostLog(commands.Cog):
                             value=chunk,
                             inline=False)
         # inactive threads
+        """
         embed.add_field(name="Inactive Threads",
                         value=embed_inactive_threads,
                         inline=False)
+        """
 
         message = await self.bot.get_channel(self.postlog_channel_id).fetch_message(self.postlog_message_id)
         await message.edit(embed=embed, content="")
