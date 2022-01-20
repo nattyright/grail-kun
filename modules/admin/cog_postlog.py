@@ -97,6 +97,8 @@ class PostLog(commands.Cog):
     async def update_postlog(self):
 
         embed_active_threads = ""
+        embed_active_threads_list = []
+        active_thread_count = 0
         embed_inactive_threads = ""
         cur_time = datetime.utcnow()
 
@@ -112,6 +114,7 @@ class PostLog(commands.Cog):
 
             # active thread
             if day_count[0] < 4:
+                active_thread_count += 1
 
                 text += ": updated "
                 if day_count[0] > 0:
@@ -127,16 +130,28 @@ class PostLog(commands.Cog):
 
                 embed_inactive_threads += text
 
-        if embed_active_threads == "":
+            # split active threads into multiple embed every 10 threads
+            if active_thread_count > 9:
+                active_thread_count = 0
+                embed_active_threads_list.append(embed_active_threads)
+                embed_active_threads = ""
+
+        if embed_active_threads != "":
+            embed_active_threads_list.append(embed_active_threads)
+
+        if len(embed_active_threads_list) == 0:
             embed_active_threads = "No active threads."
         if embed_inactive_threads == "":
             embed_inactive_threads = "No inactive threads."
 
         embed = discord.Embed(title="",
                               color=0)
-        embed.add_field(name="Active Threads",
-                        value=embed_active_threads,
-                        inline=False)
+        # active threads
+        for chunk in embed_active_threads_list:
+            embed.add_field(name="Active Threads",
+                            value=chunk,
+                            inline=False)
+        # inactive threads
         embed.add_field(name="Inactive Threads",
                         value=embed_inactive_threads,
                         inline=False)
