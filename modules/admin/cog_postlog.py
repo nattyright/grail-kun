@@ -145,10 +145,11 @@ class PostLog(commands.Cog):
             embed_inactive_threads = "No inactive threads."
 
         embed = discord.Embed(title="",
+                              description="**Active Threads**",
                               color=0)
         # active threads
         for chunk in embed_active_threads_list:
-            embed.add_field(name="Active Threads",
+            embed.add_field(name="_ _",
                             value=chunk,
                             inline=False)
         # inactive threads

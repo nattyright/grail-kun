@@ -22,18 +22,19 @@ BANNER_VALUE_1 = "amazones_cleo"
 BANNER_VALUE_2 = "amazones_neet"
 BANNER_VALUE_3 = "valentines_2022_singlerateup"
 
-BANNER_VALUES = {"lb5_orion": "Lostbelt No.5 Atlantis Pickup Summon (S.Orion)",
-                 "lb5_europa": "Lostbelt No.5 Atlantis Pickup Summon (Europa)",
-                 "lb5_achilles": "Lostbelt No.5 Atlantis Pickup Summon 2",
-                 "newyear_2022": "New Year 2022 Pickup Summon (Yang Guifei)",
-                 "sparrow_benny": "Revival: Sparrow's Inn Pickup Summon (Beni)",
-                 "sparrow_tamamo": "Revival: Sparrow's Inn Pickup Summon (Tamamo)",
-                 "sparrow_assli": "Revival: Sparrow's Inn Pickup Summon 2",
-                 "amazones_cleo": "Amazoness Dot Com Pickup Summon (Cleo)",
-                 "amazones_neet": "Amazoness Dot Com Pickup Summon (Osakabehime)",
-                 "valentines_2022_singlerateup": "Valentine's 2022 Pickup Summon (Sei)",
+BANNER_VALUES = {
+                 "chaldea_boys_singlerateup": "Chaldea Boys Collection 2022 Pickup Summon (Odysseus)",
                  "19m_dl": "19 Mil Downloads Pickup Summon",
-                 "chaldea_boys_singlerateup": "Chaldea Boys Collection 2022 Pickup Summon (Odysseus)"
+                 "valentines_2022_singlerateup": "Valentine's 2022 Pickup Summon (Sei)",
+                 "amazones_neet": "Amazoness Dot Com Pickup Summon (Osakabehime)",
+                 "amazones_cleo": "Amazoness Dot Com Pickup Summon (Cleo)",
+                 "sparrow_assli": "Revival: Sparrow's Inn Pickup Summon 2",
+                 "sparrow_tamamo": "Revival: Sparrow's Inn Pickup Summon (Tamamo)",
+                 "sparrow_benny": "Revival: Sparrow's Inn Pickup Summon (Beni)",
+                 "newyear_2022": "New Year 2022 Pickup Summon (Yang Guifei)",
+                 "lb5_achilles": "Lostbelt No.5 Atlantis Pickup Summon 2",
+                 "lb5_europa": "Lostbelt No.5 Atlantis Pickup Summon (Europa)",
+                 "lb5_orion": "Lostbelt No.5 Atlantis Pickup Summon (S.Orion)"
                  }
 
 COOLDOWN = True
