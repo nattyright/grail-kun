@@ -14,15 +14,24 @@ from PIL import ImageFont
 from PIL import ImageDraw
 
 # global vars for cog
-BANNER_LABEL_1 = "Amazoness Dot Com Pickup Summon (Cleo)"
-BANNER_LABEL_2 = "Amazoness Dot Com Pickup Summon (Osakabehime)"
-BANNER_LABEL_3 = "Valentine's 2022 Pickup Summon (Sei)"
+BANNER_LABEL_1 = "Valentine's 2022 Pickup Summon (Sei)"
+BANNER_LABEL_2 = "19 Mil Downloads Pickup Summon (JP)"
+BANNER_LABEL_3 = "Chaldea Boys Collection 2022 Pickup Summon (Odysseus)"
 
-BANNER_VALUE_1 = "amazones_cleo"
-BANNER_VALUE_2 = "amazones_neet"
-BANNER_VALUE_3 = "valentines_2022_singlerateup"
+BANNER_VALUE_1 = "valentines_2022_singlerateup"
+BANNER_VALUE_2 = "19m_dl"
+BANNER_VALUE_3 = "chaldea_boys_singlerateup"
 
 BANNER_VALUES = {
+                 "anni_5": "5th Anniversary Pickup Summon (Castoria)",
+                 "swimsuit_aoe": "Swimsuit and AoE Servant Pickup Summon",
+                 "requiem_collab": "Fate/Requiem Collaboration Event Pickup Summon",
+                 "gudaguda_final_honnoji": "Revival: GUDAGUDA Final Honnoji Pickup Summon",
+                 "20m_dl_musashi": "20 Million Downloads Pickup Summon (Musashi)",
+                 "olympus_2": "Olympus Pickup Summon (Romulus=Quirinus)",
+                 "olympus_1": "Olympus Pickup Summon (Dioscuri, Caenis)",
+                 "apocrypha_pickup_achilles": "Apocrypha/Inheritance of Glory Pickup Summon",
+                 "babylonia_pickup": "Babylonia Pickup Summon",
                  "chaldea_boys_singlerateup": "Chaldea Boys Collection 2022 Pickup Summon (Odysseus)",
                  "19m_dl": "19 Mil Downloads Pickup Summon",
                  "valentines_2022_singlerateup": "Valentine's 2022 Pickup Summon (Sei)",
