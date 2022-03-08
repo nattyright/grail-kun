@@ -14,13 +14,13 @@ from PIL import ImageFont
 from PIL import ImageDraw
 
 # global vars for cog
-BANNER_LABEL_1 = "Valentine's 2022 Pickup Summon (Sei)"
-BANNER_LABEL_2 = "19 Mil Downloads Pickup Summon (JP)"
-BANNER_LABEL_3 = "Chaldea Boys Collection 2022 Pickup Summon (Odysseus)"
+BANNER_LABEL_1 = "Babylonia Pickup Summon"
+BANNER_LABEL_2 = "Olympus Pickup Summon (Dioscuri, Caenis)"
+BANNER_LABEL_3 = "Olympus Pickup Summon (Romulus=Quirinus)"
 
-BANNER_VALUE_1 = "valentines_2022_singlerateup"
-BANNER_VALUE_2 = "19m_dl"
-BANNER_VALUE_3 = "chaldea_boys_singlerateup"
+BANNER_VALUE_1 = "apocrypha_pickup_achilles"
+BANNER_VALUE_2 = "olympus_1"
+BANNER_VALUE_3 = "olympus_2"
 
 BANNER_VALUES = {
                  "anni_5": "5th Anniversary Pickup Summon (Castoria)",
