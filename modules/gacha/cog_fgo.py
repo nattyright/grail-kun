@@ -14,13 +14,15 @@ from PIL import ImageFont
 from PIL import ImageDraw
 
 # global vars for cog
-BANNER_LABEL_1 = "Apocrypha/Inheritance of Glory Pickup Summon"
-BANNER_LABEL_2 = "Olympus Pickup Summon (Dioscuri, Caenis)"
-BANNER_LABEL_3 = "Olympus Pickup Summon (Romulus=Quirinus)"
+BANNER_LABEL_1 = "Apocrypha/Inheritance of Glory Pickup Summon (Achilles)"
+BANNER_LABEL_2 = "Apocrypha/Inheritance of Glory Pickup Summon (Amakusa)"
+BANNER_LABEL_3 = "Olympus Pickup Summon (Dioscuri, Caenis)"
+BANNER_LABEL_4 = "Olympus Pickup Summon (Romulus=Quirinus)"
 
 BANNER_VALUE_1 = "apocrypha_pickup_achilles"
-BANNER_VALUE_2 = "olympus_1"
-BANNER_VALUE_3 = "olympus_2"
+BANNER_VALUE_2 = "apocrypha_pickup_amakusa"
+BANNER_VALUE_3 = "olympus_1"
+BANNER_VALUE_4 = "olympus_2"
 
 BANNER_VALUES = {
                  "anni_5": "5th Anniversary Pickup Summon (Castoria)",
@@ -97,6 +99,7 @@ class FGOGacha(commands.Cog):
                            options=[SelectOption(label=BANNER_LABEL_1, value=BANNER_VALUE_1),
                                     SelectOption(label=BANNER_LABEL_2, value=BANNER_VALUE_2),
                                     SelectOption(label=BANNER_LABEL_3, value=BANNER_VALUE_3),
+                                    SelectOption(label=BANNER_LABEL_4, value=BANNER_VALUE_4),
                                     SelectOption(label="Story Banner", value="story")])
                 ]
             )
@@ -126,6 +129,7 @@ class FGOGacha(commands.Cog):
                            options=[SelectOption(label=BANNER_LABEL_1, value=BANNER_VALUE_1),
                                     SelectOption(label=BANNER_LABEL_2, value=BANNER_VALUE_2),
                                     SelectOption(label=BANNER_LABEL_3, value=BANNER_VALUE_3),
+                                    SelectOption(label=BANNER_LABEL_4, value=BANNER_VALUE_4),
                                     SelectOption(label="Story Banner", value="story")])
                 ]
             )
@@ -151,6 +155,7 @@ class FGOGacha(commands.Cog):
                        options=[SelectOption(label=BANNER_LABEL_1, value=BANNER_VALUE_1),
                                 SelectOption(label=BANNER_LABEL_2, value=BANNER_VALUE_2),
                                 SelectOption(label=BANNER_LABEL_3, value=BANNER_VALUE_3),
+                                SelectOption(label=BANNER_LABEL_4, value=BANNER_VALUE_4),
                                 SelectOption(label="Story Banner", value="story")])
             ]
         )
