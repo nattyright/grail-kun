@@ -14,7 +14,7 @@ from PIL import ImageFont
 from PIL import ImageDraw
 
 # global vars for cog
-BANNER_LABEL_1 = "Babylonia Pickup Summon"
+BANNER_LABEL_1 = "Apocrypha/Inheritance of Glory Pickup Summon"
 BANNER_LABEL_2 = "Olympus Pickup Summon (Dioscuri, Caenis)"
 BANNER_LABEL_3 = "Olympus Pickup Summon (Romulus=Quirinus)"
 
