@@ -62,12 +62,12 @@ class Calendar(commands.Cog):
                             value=discord_embed["content"],
                             inline=False)
 
-            if ENUM_ONGOING_EVENT in discord_embed["embeds"][0]["fields"]:
+            if discord_embed["embeds"][0]["fields"][ENUM_ONGOING_EVENT]["value"] != "":
                 embed.add_field(name="Today's Events",
                                 value=discord_embed["embeds"][0]["fields"][ENUM_ONGOING_EVENT]["value"],
                                 inline=False)
 
-            if ENUM_UPCOMING_EVENT in discord_embed["embeds"][0]["fields"]:
+            if discord_embed["embeds"][0]["fields"][ENUM_UPCOMING_EVENT]["value"] != "":
                 embed.add_field(name="Upcoming Events",
                                 value=discord_embed["embeds"][0]["fields"][ENUM_UPCOMING_EVENT]["value"],
                                 inline=False)
