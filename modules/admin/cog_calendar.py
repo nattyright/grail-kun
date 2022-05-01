@@ -61,12 +61,16 @@ class Calendar(commands.Cog):
             embed.add_field(name="Server Time",
                             value=discord_embed["content"],
                             inline=False)
-            embed.add_field(name="Today's Events",
-                            value=discord_embed["embeds"][0]["fields"][ENUM_ONGOING_EVENT]["value"],
-                            inline=False)
-            embed.add_field(name="Upcoming Events",
-                            value=discord_embed["embeds"][0]["fields"][ENUM_UPCOMING_EVENT]["value"],
-                            inline=False)
+
+            if ENUM_ONGOING_EVENT in discord_embed["embeds"][0]["fields"]:
+                embed.add_field(name="Today's Events",
+                                value=discord_embed["embeds"][0]["fields"][ENUM_ONGOING_EVENT]["value"],
+                                inline=False)
+
+            if ENUM_UPCOMING_EVENT in discord_embed["embeds"][0]["fields"]:
+                embed.add_field(name="Upcoming Events",
+                                value=discord_embed["embeds"][0]["fields"][ENUM_UPCOMING_EVENT]["value"],
+                                inline=False)
             await message.edit(embed=embed, content="")
 
     @update_server_calendar.before_loop
