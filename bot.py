@@ -6,7 +6,8 @@ from discord_components import DiscordComponents
 import mongodb_client
 
 # setup mongodb database
-db = mongodb_client.get_database()
+db = mongodb_client.get_database('grail-kun')
+db_fan_servants = mongodb_client.get_database('fan-servants')
 
 # setup bot env
 load_dotenv()
@@ -21,6 +22,7 @@ DiscordComponents(client)
 async def on_ready():
     # add db
     client.db = db
+    client.db_fan_servants = db_fan_servants
 
     # load cogs
     for folder in os.listdir("modules"):

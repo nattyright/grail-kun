@@ -1,4 +1,4 @@
-def get_database():
+def get_database(dbname='grail-kun'):
     from pymongo import MongoClient
     import pymongo
 
@@ -9,4 +9,4 @@ def get_database():
     client = MongoClient(CONNECTION_STRING)
 
     # Create the database for our example (we will use the same database throughout the tutorial
-    return client['grail-kun']
+    return client[dbname]
