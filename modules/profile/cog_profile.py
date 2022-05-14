@@ -63,8 +63,19 @@ class servantProfile(commands.Cog):
         else:
             servants = result["claimedServants"]
             result = []
+            servants_deleted_profiles_removed = []
             for servant_id in servants:
-                result.append(self.bot.db_fan_servants["servants"].find_one({"info.cardURL": servant_id}, {"info.servantName": 1})["info"]["servantName"])
+                servant = self.bot.db_fan_servants["servants"].find_one({"info.cardURL": servant_id}, {"info.servantName": 1})
+                if servant is not None:
+                    result.append(servant["info"]["servantName"])
+                    servants_deleted_profiles_removed.append(servant_id)
+
+            # update claimed servant list if it's different from the original
+            # (e.g. some servant profiles were deleted)
+            if len(set(servants_deleted_profiles_removed).intersection(servants)) != len(servants):
+                self.bot.db_fan_servants["users"].update_one({"userID": author_id},
+                                                             {"$set": {"claimedServants": servants_deleted_profiles_removed}},
+                                                             upsert=True)
 
             message = "You have claimed " + str(len(result)) + " Servants: " + ', '.join(map(str, result))
 
