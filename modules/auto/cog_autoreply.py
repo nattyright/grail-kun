@@ -18,6 +18,10 @@ class AutoReply(commands.Cog):
                                        'sheet submission is at...' +
                                        submission_channel +
                                        '~!')
+        if 'brap' in message.content:
+            member_id = message.author.id
+            member = '<@' + str(member_id) + '>'
+            await message.channel.send('shuddup' + member)
 
     @commands.command()
     async def newhelp(self, ctx):
@@ -75,5 +79,5 @@ class AutoReply(commands.Cog):
                                str9)
 
 
-def setup(bot: commands.Bot):
-    bot.add_cog(AutoReply(bot))
+async def setup(bot: commands.Bot):
+    await bot.add_cog(AutoReply(bot))

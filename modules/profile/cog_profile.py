@@ -3,7 +3,6 @@
 # imports for cog
 import discord
 from discord.ext import commands
-from discord_components import Select, SelectOption
 from io import BytesIO
 
 # imports for gacha
@@ -84,6 +83,6 @@ class servantProfile(commands.Cog):
 
 
 
-def setup(bot: commands.Bot):
-    bot.add_cog(servantProfile(bot))
+async def setup(bot: commands.Bot):
+    await bot.add_cog(servantProfile(bot))
 

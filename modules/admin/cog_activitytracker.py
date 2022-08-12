@@ -88,8 +88,8 @@ class ActivityTracker(commands.Cog):
             await ctx.channel.send('[ADMIN ROLE REQUIRED] :*)*')
 
 
-def setup(bot: commands.Bot):
-    bot.add_cog(ActivityTracker(bot))
+async def setup(bot: commands.Bot):
+    await bot.add_cog(ActivityTracker(bot))
 
 
 def get_cycle_count():

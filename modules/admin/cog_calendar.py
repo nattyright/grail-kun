@@ -97,8 +97,8 @@ class Calendar(commands.Cog):
         await message.edit(embed=embed, content="")
 
 
-def setup(bot: commands.Bot):
-    bot.add_cog(Calendar(bot))
+async def setup(bot: commands.Bot):
+    await bot.add_cog(Calendar(bot))
 
 
 

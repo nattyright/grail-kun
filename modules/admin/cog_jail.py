@@ -101,5 +101,5 @@ class Jail(commands.Cog):
                                            {"$set": {"roles": roles}})
 
 
-def setup(bot: commands.Bot):
-    bot.add_cog(Jail(bot))
+async def setup(bot: commands.Bot):
+    await bot.add_cog(Jail(bot))

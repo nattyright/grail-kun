@@ -1,7 +1,7 @@
 # imports for cog
 import discord
 from discord.ext import commands
-from discord_components import Select, SelectOption
+from discord.ui import Select, View
 from io import BytesIO
 
 # imports for gacha
@@ -42,7 +42,8 @@ BANNER_VALUES = {
                  "newyear_2022": "New Year 2022 Pickup Summon (Yang Guifei)",
                  "lb5_achilles": "Lostbelt No.5 Atlantis Pickup Summon 2",
                  "lb5_europa": "Lostbelt No.5 Atlantis Pickup Summon (Europa)",
-                 "lb5_orion": "Lostbelt No.5 Atlantis Pickup Summon (S.Orion)"
+                 "lb5_orion": "Lostbelt No.5 Atlantis Pickup Summon (S.Orion)",
+                 "story" : "Story Banner"
                  }
 
 COOLDOWN = True
@@ -89,23 +90,32 @@ class FGOGacha(commands.Cog):
         if COOLDOWN:
             COOLDOWN = False
 
-            msg_sent = await ctx.send(
-                "Pick a banner",
-                components=[
-                    Select(placeholder="Available banners",
-                           options=[SelectOption(label=BANNER_LABEL_1, value=BANNER_VALUE_1),
-                                    SelectOption(label=BANNER_LABEL_2, value=BANNER_VALUE_2),
-                                    SelectOption(label="Story Banner", value="story")])
+            select = Select(
+                placeholder="Pick a banner",
+                options=[
+                    discord.SelectOption(label=BANNER_LABEL_1, value=BANNER_VALUE_1),
+                    discord.SelectOption(label=BANNER_LABEL_2, value=BANNER_VALUE_2),
+                    discord.SelectOption(label="Story Banner", value="story")
                 ]
             )
-            interaction = await self.bot.wait_for("select_option")
-            await msg_sent.delete()
-            await ctx.send(content='Generating 11-roll for ' + interaction.component[0].label + '...' + author_id)
-            # update database
-            self.update_gacha_database(ctx.author.id, interaction.component[0].value, 10)
-            # roll the gacha
-            await FGOGacha.sent_ten_roll_image(ctx, author_id, interaction.component[0].value)
-            COOLDOWN = True
+
+            async def my_callback(interaction):
+                global COOLDOWN
+                await interaction.response.send_message(f'Generating 11-roll for ' +
+                                       BANNER_VALUES[select.values[0]] +
+                                       '...' + author_id)
+
+                # update database
+                self.update_gacha_database(ctx.author.id, select.values[0], 10)
+                # roll the gacha
+                await FGOGacha.sent_ten_roll_image(ctx, author_id, select.values[0])
+                COOLDOWN = True
+            select.callback = my_callback
+
+            view = View()
+            view.add_item(select)
+            await ctx.send("Pick a banner", view=view)
+
         else:
             await ctx.channel.send('wait and cope ' + author_id)
 
@@ -117,45 +127,64 @@ class FGOGacha(commands.Cog):
         if COOLDOWN:
             COOLDOWN = False
 
-            msg_sent = await ctx.send(
-                "Pick a banner",
-                components=[
-                    Select(placeholder="Available banners",
-                           options=[SelectOption(label=BANNER_LABEL_1, value=BANNER_VALUE_1),
-                                    SelectOption(label=BANNER_LABEL_2, value=BANNER_VALUE_2),
-                                    SelectOption(label="Story Banner", value="story")])
+            select = Select(
+                placeholder="Pick a banner",
+                options=[
+                    discord.SelectOption(label=BANNER_LABEL_1, value=BANNER_VALUE_1),
+                    discord.SelectOption(label=BANNER_LABEL_2, value=BANNER_VALUE_2),
+                    discord.SelectOption(label="Story Banner", value="story")
                 ]
             )
-            interaction = await self.bot.wait_for("select_option")
-            await msg_sent.delete()
-            await ctx.send(content='Generating single roll for ' + interaction.component[0].label + '...' + author_id)
-            # update database
-            self.update_gacha_database(ctx.author.id, interaction.component[0].value, 1)
-            # roll the gacha
-            await FGOGacha.sent_single_roll_image(ctx, author_id, interaction.component[0].value)
-            COOLDOWN = True
+
+            async def my_callback(interaction):
+                global COOLDOWN
+                await interaction.response.send_message(f'Generating single roll for ' +
+                                       BANNER_VALUES[select.values[0]] +
+                                       '...' + author_id)
+
+                # update database
+                self.update_gacha_database(ctx.author.id, select.values[0], 1)
+                # roll the gacha
+                await FGOGacha.sent_single_roll_image(ctx, author_id, select.values[0])
+                COOLDOWN = True
+            select.callback = my_callback
+
+            view = View()
+            view.add_item(select)
+            await ctx.send("Pick a banner", view=view)
+
         else:
             await ctx.channel.send('wait and cope ' + author_id)
+
 
     @commands.command()
     async def stats(self, ctx):
         author_id = '<@' + str(ctx.author.id) + '>'
 
-        msg_sent = await ctx.send(
-            "Pick a banner",
-            components=[
-                Select(placeholder="Available banners",
-                       options=[SelectOption(label=BANNER_LABEL_1, value=BANNER_VALUE_1),
-                                SelectOption(label=BANNER_LABEL_2, value=BANNER_VALUE_2),
-                                SelectOption(label="Story Banner", value="story")])
+        select = Select(
+            placeholder="Pick a banner",
+            options=[
+                discord.SelectOption(label=BANNER_LABEL_1, value=BANNER_VALUE_1),
+                discord.SelectOption(label=BANNER_LABEL_2, value=BANNER_VALUE_2),
+                discord.SelectOption(label="Story Banner", value="story")
             ]
         )
-        interaction = await self.bot.wait_for("select_option")
-        await msg_sent.delete()
 
-        data = self.bot.db["fgogacha"].find_one({"userID": ctx.author.id, "bannerID": interaction.component[0].value})
-        total_rolls = data["single"] + data["multi"] * 10
-        await ctx.send(content=author_id + ' has made ' + str(total_rolls) + ' rolls on ' + interaction.component[0].label)
+        async def my_callback(interaction):
+            global COOLDOWN
+
+            data = self.bot.db["fgogacha"].find_one(
+                {"userID": ctx.author.id, "bannerID": select.values[0]})
+            total_rolls = data["single"] + data["multi"] * 10
+            await interaction.response.send_message(author_id + ' has made ' + str(total_rolls) + ' rolls on ' + BANNER_VALUES[select.values[0]])
+
+
+        select.callback = my_callback
+
+        view = View()
+        view.add_item(select)
+        await ctx.send("Pick a banner", view=view)
+
 
     def update_gacha_database(self, user_id, banner_id, roll_count=0):
         user_details = self.bot.db["fgogacha"].find_one({"userID": user_id, "bannerID": banner_id})
@@ -199,8 +228,8 @@ class FGOGacha(commands.Cog):
             await message.channel.send(content=author_id, file=discord.File(fp=image_binary, filename='image.png'))
 
 
-def setup(bot: commands.Bot):
-    bot.add_cog(FGOGacha(bot))
+async def setup(bot: commands.Bot):
+    await bot.add_cog(FGOGacha(bot))
 
 
 """
