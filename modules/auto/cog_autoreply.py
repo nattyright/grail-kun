@@ -18,7 +18,7 @@ class AutoReply(commands.Cog):
                                        'sheet submission is at...' +
                                        submission_channel +
                                        '~!')
-        if 'brap' in message.content:
+        if 'brap' in message.content.lower().replace(" ", ""):
             member_id = message.author.id
             member = '<@' + str(member_id) + '>'
             await message.channel.send('shuddup' + member)
