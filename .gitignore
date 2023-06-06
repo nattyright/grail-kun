@@ -7,3 +7,6 @@
 # Environments
 .env
 .venv
+
+data/msg_ids.json
+data/images/tracker/tracker.json
