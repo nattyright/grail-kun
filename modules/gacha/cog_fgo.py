@@ -14,15 +14,15 @@ from PIL import ImageFont
 from PIL import ImageDraw
 
 # global vars for cog
-BANNER_LABEL_1 = "Fate/Requiem Collaboration Event Pickup Summon"
+BANNER_LABEL_1 = "Avalon le Fae Morgan Pickup Summon 1"
 BANNER_LABEL_2 = "Swimsuit and AoE Servant Pickup Summon"
 
-BANNER_VALUE_1 = "requiem_collab"
+BANNER_VALUE_1 = "lb_6_1"
 BANNER_VALUE_2 = "swimsuit_aoe"
 
 BANNER_VALUES = {
+                 "lb_6_1": "Avalon le Fae Morgan Pickup Summon 1",
                  "anni_5": "5th Anniversary Pickup Summon (Castoria)",
-
                  "swimsuit_aoe": "Swimsuit and AoE Servant Pickup Summon",
                  "requiem_collab": "Fate/Requiem Collaboration Event Pickup Summon",
                  "gudaguda_final_honnoji": "Revival: GUDAGUDA Final Honnoji Pickup Summon",

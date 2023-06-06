@@ -15,13 +15,13 @@ class AutoReply(commands.Cog):
             template_channel = '<#763707512092098647>'
             submission_channel = '<#763707512251088923>'
             await message.channel.send(member +
-                                       'sheet submission is at...' +
+                                       ' sheet submission is at...' +
                                        submission_channel +
                                        '~!')
         if 'brap' in message.content.lower().replace(" ", ""):
             member_id = message.author.id
             member = '<@' + str(member_id) + '>'
-            await message.channel.send('shuddup' + member)
+            await message.channel.send('shuddup ' + member)
 
     @commands.command()
     async def newhelp(self, ctx):

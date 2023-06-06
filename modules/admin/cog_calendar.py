@@ -48,7 +48,7 @@ class Calendar(commands.Cog):
         else:
             await ctx.channel.send('[ADMIN ROLE REQUIRED] :*)*')
 
-    @tasks.loop(minutes=1)
+    @tasks.loop(minutes=1, reconnect=True)
     async def update_server_calendar(self):
         global CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID
         if CALENDAR_MESSAGE_ID != 0 and CALENDAR_CHANNEL_ID != 0:
