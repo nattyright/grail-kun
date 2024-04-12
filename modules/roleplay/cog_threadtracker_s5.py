@@ -5,6 +5,9 @@ import json
 from datetime import datetime
 import math
 
+time_504_hours = 504 # 3 minutes
+time_168_hours = 168 # 1 minute
+time_3600_seconds = 3600 # minute testing
 
 class ThreadTrackerS5(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -33,6 +36,9 @@ class ThreadTrackerS5(commands.Cog):
                 if thread_exceeded_three_weeks(str(thread.id)):
                     await message.add_reaction(emotes[count])
                     count += 1
+
+                # debugging
+                await message.channel.send(get_json(str(thread.id)))
             
 
     # pause thread + lock thread
@@ -120,7 +126,7 @@ def thread_exceeded_three_weeks(thread_id):
 
         data[thread_id]['exceeded_3weeks'] = str(time_diff_exceeded_limit(time_begin, 
                                                                           time_end, 
-                                                                          (504 + pause_timer - pause_offset)))
+                                                                          (time_504_hours + pause_timer - pause_offset)))
 
         # write to file
         to_edit.seek(0)
@@ -145,7 +151,7 @@ def pause_exceeded_seven_days(thread_id):
             data[thread_id]['pause_timer'] = str(int(data[thread_id]['pause_timer']) + time_diff_hour)
 
         # pause offset = total EXCEEDED paused time (the portion that's > 7 days during each pause)
-        pause_offset = 0 if (time_diff_hour < 168) else abs(time_diff_hour - 168)
+        pause_offset = 0 if (time_diff_hour < time_168_hours) else abs(time_diff_hour - time_168_hours)
 
         if 'pause_offset' not in data[thread_id]:
             data[thread_id]['pause_offset'] = str(pause_offset)
@@ -170,7 +176,7 @@ def is_pause_in_cooldown(thread_id):
             time_begin = datetime.strptime(data[thread_id]['timestamp_unpause'], '%Y-%m-%d %H:%M:%S.%f%z')
             time_end = discord.utils.utcnow()
 
-            return (not time_diff_exceeded_limit(time_begin, time_end, 168))
+            return (not time_diff_exceeded_limit(time_begin, time_end, time_168_hours))
 
 
 def update_timestamp_pause_thread(thread_id):
@@ -214,12 +220,17 @@ def validate_json_value(main_key, sub_key, val_to_compare):
 def time_diff_exceeded_limit(time_1, time_2, target_diff_in_hours):
 
         time_difference = abs(time_2 - time_1)
-        difference_in_hours = time_difference.total_seconds() / 3600
+        difference_in_hours = time_difference.total_seconds() / time_3600_seconds
 
         # Check if the difference is greater than 504 hours aka 21 days aka 3 weeks
         return (math.floor(difference_in_hours) > target_diff_in_hours)
         
 def time_diff(time_1, time_2):
         time_difference = abs(time_2 - time_1)
-        difference_in_hours = time_difference.total_seconds() / 3600
+        difference_in_hours = time_difference.total_seconds() / time_3600_seconds
         return math.floor(difference_in_hours)
+
+def get_json(thread_id):
+    with open('data/roleplay/threadtracker_s5.json', 'r+', encoding='utf-8') as to_view:
+        data = json.load(to_view)
+        return str(data[thread_id])
