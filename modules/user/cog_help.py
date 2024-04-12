@@ -12,15 +12,15 @@ class Help(commands.Cog):
                     {"name": "Mod Commands",
                      "value": "*Server Management*\n"
                               "`        f.calendar:` fetch server calendar in the current channel\n"
-                              "`      f.jail @user:` drop @user in the unhorny jail\n"
+                              "~~`      f.jail @user:` drop @user in the unhorny jail~~\n"
                               
                               "*Sheet Review*\n"
-                              "`    f.review @user:` create hidden review channel for mods and @user\n"
+                              "~~`    f.review @user:` create hidden review channel for mods and @user~~\n"
                               
-                              "*Season 3 RP Management*\n"
-                              "`   f.checkin @user:` check-in @user for the current cycle\n"
-                              "`f.checkindel @user:` remove check-in for @user for the current cycle\n"
-                              "`      f.checkinimg:` display season 3 activity tracker\n"},
+                              "~~*Season 3 RP Management*~~\n"
+                              "~~`   f.checkin @user:` check-in @user for the current cycle~~\n"
+                              "~~`f.checkindel @user:` remove check-in for @user for the current cycle~~\n"
+                              "~~`      f.checkinimg:` display season 3 activity tracker~~\n"},
 
                     {"name": "User Commands",
                      "value": "*Server Gacha*\n"
@@ -28,8 +28,7 @@ class Help(commands.Cog):
                               "` f.single:` salt simulator (strong-willed)\n"
                               "`  f.stats:` salt simulator stats (soul crushing)\n"
                               "*Misc.*\n"
-                              "`f.newhelp:` helper message for new members\n"
-                              "` f.cytube:` [type] [source] [ep(optional)]"}
+                              "`f.newhelp:` helper message for new members"}
                 ]
             }
         ]

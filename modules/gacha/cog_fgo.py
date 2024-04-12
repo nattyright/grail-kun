@@ -6,7 +6,7 @@ from io import BytesIO
 
 # imports for gacha
 from datetime import datetime
-from time import sleep
+from time import sleep, time
 import random
 import json
 from PIL import Image
@@ -259,13 +259,13 @@ def get_banner_data(banner_name):
 
 def get_random_num():
     sleep(0.05)
-    random.seed(datetime.now())
+    random.seed(time())
     return random.random()
 
 
 def get_random_num_whole(num_range):
     sleep(0.05)
-    random.seed(datetime.now())
+    random.seed(time())
     return random.randrange(num_range)
 
 
@@ -379,7 +379,7 @@ def ten_roll(banner_name):
         card = summon_once_normally()
         cards.append(card)
 
-    random.seed(datetime.now())
+    random.seed(time())
     random.shuffle(cards)
     return cards
 
@@ -654,8 +654,8 @@ def generate_single_roll_image(result):
     msg2 = "Did you get what you wanted?w?"
     bg_draw = ImageDraw.Draw(bg)
     W, H = 244, 418
-    w, h = bg_draw.textsize(msg, font=font)
-    w2, h2 = bg_draw.textsize(msg2, font=font2)
+    w, h = bg_draw.textlength(msg, font=font), 24
+    w2, h2 = bg_draw.textlength(msg2, font=font2), 13
     bg_draw.text(((W - w) / 2, 335), msg,
                  font=font, fill='rgb(255, 255, 255)',
                  stroke_width=1, stroke_fill='rgb(0, 0, 0)')

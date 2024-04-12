@@ -144,9 +144,9 @@ def get_calendar_events_as_json():
         print('No upcoming events found.')
     for event in events:
         event['event_end_date'] = datetime.datetime.strptime(event['end'].get('dateTime', event['end'].get('date')),
-                                                    '%Y-%m-%d').date()
+                                                    '%Y-%m-%dT%H:%M:%SZ').date()
         event['event_start_date'] = datetime.datetime.strptime(event['start'].get('dateTime', event['start'].get('date')),
-                                                      '%Y-%m-%d').date()
+                                                      '%Y-%m-%dT%H:%M:%SZ').date()
         event['duration'] = (event['event_end_date'] - event['event_start_date']).days
 
     # print event list
