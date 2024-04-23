@@ -10,4 +10,4 @@
 
 data/msg_ids.json
 data/images/tracker/tracker.json
-data/roleplay/threadtracker_s5.json
+data/roleplay/*threadtracker_s5.json
