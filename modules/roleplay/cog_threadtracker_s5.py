@@ -191,6 +191,9 @@ def is_locked(thread_id):
         data = json.load(to_edit)
 
         # never paused before
+        if 'is_locked' not in data[thread_id]:
+            return False
+        
         return data[thread_id]["is_locked"] == "True"
 
 
