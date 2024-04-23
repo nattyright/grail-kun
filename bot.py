@@ -19,7 +19,7 @@ TOKEN = os.getenv("TOKEN")
 
 intents = discord.Intents.all()
 intents.members = True
-client = Bot(command_prefix="f.", help_command=None, intents=intents)
+client = commands.Bot(command_prefix="f.", help_command=None, intents=intents)
 
 
 """
@@ -69,6 +69,9 @@ class MyBot(commands.Bot):
         # add db
         self.db = db
         self.db_fan_servants = db_fan_servants
+
+        # sync slash commands
+        await self.tree.sync()
 
         # on ready message
         print('We have logged in as {0.user}'.format(self))

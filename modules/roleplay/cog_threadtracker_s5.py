@@ -42,25 +42,30 @@ class ThreadTrackerS5(commands.Cog):
             
 
     # pause thread + lock thread
-    @commands.hybrid_command(name='pause', with_app_command=True)
+    @commands.hybrid_command(description="Pause a S5 RP Thread")
     async def pause(self, ctx: commands.Context):
         thread = ctx.message.channel
 
-        # check if thread has been paused in the prev 7 days (CD)
-        if not is_pause_in_cooldown(str(thread.id)):
-            if is_locked(str(thread.id)):
-                await ctx.channel.send("Thread is already locked. Please unlock it first.")
-            else:
-                update_timestamp_pause_thread(str(thread.id))
-                #thread.locked = True
-                update_lock_thread(str(thread.id))
-                # lock thread
-                # Overwrite the channel permissions to disallow sending messages
-                await thread.edit(locked=True)
-                await ctx.channel.send("Thread locked.")
+        # check if thread is in appropriate channel (s5 rp)
+        if 'Season 5'.lower() not in str(thread.category).lower():
+            await ctx.reply('Only S5 Threads can be paused.')
 
-        else:
-            await ctx.channel.send('Thread pause in 7 day cooldown :sob:')
+        else: 
+            # check if thread has been paused in the prev 7 days (CD)
+            if not is_pause_in_cooldown(str(thread.id)):
+                if is_locked(str(thread.id)):
+                    await ctx.reply("Thread is already locked. Please unlock it first.")
+                else:
+                    update_timestamp_pause_thread(str(thread.id))
+                    #thread.locked = True
+                    update_lock_thread(str(thread.id))
+                    # lock thread
+                    # Overwrite the channel permissions to disallow sending messages
+                    await thread.edit(locked=True)
+                    await ctx.reply("Thread locked.")
+
+            else:
+                await ctx.reply('Thread pause in 7 day cooldown :sob:')
 
 
     # unlock thread + unpause thread
