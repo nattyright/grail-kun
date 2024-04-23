@@ -35,18 +35,24 @@ class Calendar(commands.Cog):
         global CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID
         CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID = get_calendar_message_id()
 
-    @commands.command()
-    async def calendar(self, ctx):
-        if not discord.utils.get(ctx.author.roles, name="Global Moderator") is None:
-            global CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID
-            msg_sent = await ctx.channel.send('Fetching server calendar...')
+    @commands.hybrid_command(description="Display Server Calendar in the current channel")
+    @commands.has_permissions(administrator = True)
+    async def calendar(self, ctx: commands.Context):
 
-            CALENDAR_CHANNEL_ID = msg_sent.channel.id
-            CALENDAR_MESSAGE_ID = msg_sent.id
-            update_calendar_message_id(CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID)
-            await self.update_server_calendar_once_only()
-        else:
-            await ctx.channel.send('[ADMIN ROLE REQUIRED] :*)*')
+        global CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID
+        msg_sent = await ctx.reply('Fetching server calendar...')
+
+        CALENDAR_CHANNEL_ID = msg_sent.channel.id
+        CALENDAR_MESSAGE_ID = msg_sent.id
+        update_calendar_message_id(CALENDAR_CHANNEL_ID, CALENDAR_MESSAGE_ID)
+        await self.update_server_calendar_once_only()
+
+    # permission error
+    @calendar.error
+    async def calendar_error(self, ctx, error):
+        if isinstance(error, commands.MissingPermissions):
+            await ctx.reply('[ADMIN ROLE REQUIRED] :*)*')
+
 
     @tasks.loop(minutes=1, reconnect=True)
     async def update_server_calendar(self):
