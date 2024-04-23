@@ -48,13 +48,16 @@ class ThreadTrackerS5(commands.Cog):
 
         # check if thread has been paused in the prev 7 days (CD)
         if not is_pause_in_cooldown(str(thread.id)):
-            update_timestamp_pause_thread(str(thread.id))
-            #thread.locked = True
-            update_lock_thread(str(thread.id))
-            # lock thread
-            # Overwrite the channel permissions to disallow sending messages
-            await thread.edit(locked=True)
-            await ctx.channel.send("Thread locked.")
+            if is_locked(str(thread.id)):
+                await ctx.channel.send("Thread is already locked. Please unlock it first.")
+            else:
+                update_timestamp_pause_thread(str(thread.id))
+                #thread.locked = True
+                update_lock_thread(str(thread.id))
+                # lock thread
+                # Overwrite the channel permissions to disallow sending messages
+                await thread.edit(locked=True)
+                await ctx.channel.send("Thread locked.")
 
         else:
             await ctx.channel.send('Thread pause in 7 day cooldown :sob:')
@@ -177,6 +180,13 @@ def is_pause_in_cooldown(thread_id):
             time_end = discord.utils.utcnow()
 
             return (not time_diff_exceeded_limit(time_begin, time_end, time_168_hours))
+
+def is_locked(thread_id):
+    with open('data/roleplay/threadtracker_s5.json', 'r+', encoding='utf-8') as to_edit:
+        data = json.load(to_edit)
+
+        # never paused before
+        return data[thread_id]["is_locked"] == "True"
 
 
 def update_timestamp_pause_thread(thread_id):
