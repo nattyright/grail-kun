@@ -8,8 +8,7 @@ from datetime import datetime
 class AutoReply(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        random.seed(datetime.now().timestamp())
-        
+
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -31,6 +30,7 @@ class AutoReply(commands.Cog):
         if 'imsure' in msg or 'imprettysure' in msg:
             await message.channel.send('oh yeah, ' + member + '?')
         if 'lorenugg' in msg and not message.author.bot:
+            random.seed(datetime.now().timestamp())
             await message.channel.send('certified lore nuggies for sale at ' + str(random.randint(5, 20)) + ' cage fight tokens per nugget! ' + member)
 
 
