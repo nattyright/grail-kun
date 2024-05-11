@@ -21,7 +21,7 @@ class AutoReply(commands.Cog):
 
         if 'where' in msg and 'submit' in msg:
             template_channel = '<#763707512092098647>'
-            submission_channel = '<#763707512251088923>'
+            submission_channel = '<#1209500667949875250>'
             await message.channel.send(member +
                                        ' sheet submission is at...' +
                                        submission_channel +
