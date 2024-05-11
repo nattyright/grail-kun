@@ -9,19 +9,26 @@ class AutoReply(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        if 'where' in message.content and 'submit' in message.content:
-            member_id = message.author.id
-            member = '<@' + str(member_id) + '>'
+        msg = message.content.lower()
+        msg = ''.join(e for e in msg if e.isalnum())
+
+        member_id = message.author.id
+        member = '<@' + str(member_id) + '>'
+
+        if 'where' in msg and 'submit' in msg:
             template_channel = '<#763707512092098647>'
             submission_channel = '<#763707512251088923>'
             await message.channel.send(member +
                                        ' sheet submission is at...' +
                                        submission_channel +
                                        '~!')
-        if 'brap' in message.content.lower().replace(" ", ""):
-            member_id = message.author.id
-            member = '<@' + str(member_id) + '>'
+        if 'brap' in msg:
             await message.channel.send('shuddup ' + member)
+        if 'imsure' in msg or 'imprettysure' in msg:
+            await message.channel.send('oh yeah, ' + member + '?')
+        if 'lorenugg' in msg and not message.author.bot:
+            await message.channel.send('certified lore nuggies for sale at 10 cage fight tokens per nugget! ' + member)
+
 
     @commands.command()
     async def newhelp(self, ctx):
