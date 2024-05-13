@@ -29,12 +29,17 @@ class AutoReply(commands.Cog):
                                         submission_channel +
                                         '~!')
             if 'brap' in msg:
-                await message.channel.send('shuddup ' + member)
+                random.seed(datetime.now().timestamp())
+                if random.randint(0, 10) > 5: 
+                    await message.channel.send('shuddup ' + member)
             if 'imsure' in msg or 'imprettysure' in msg:
-                await message.channel.send('oh yeah, ' + member + '?')
+                random.seed(datetime.now().timestamp())
+                if random.randint(0, 10) > 5: 
+                    await message.channel.send('oh yeah, ' + member + '?')
             if 'lorenugg' in msg and not message.author.bot:
                 random.seed(datetime.now().timestamp())
-                await message.channel.send('certified lore nuggies for sale at ' + str(random.randint(5, 20)) + ' cage fight tokens per nugget! ' + member)
+                if random.randint(0, 10) > 3: 
+                    await message.channel.send('certified lore nuggies for sale at ' + str(random.randint(5, 20)) + ' cage fight tokens per nugget! ' + member)
 
 
     @commands.command()
