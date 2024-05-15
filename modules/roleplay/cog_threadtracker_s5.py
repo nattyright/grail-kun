@@ -38,7 +38,7 @@ class ThreadTrackerS5(commands.Cog):
                     count += 1
 
                 # debugging
-                await message.channel.send(get_json(str(thread.id)))
+                # await message.channel.send(get_json(str(thread.id)))
             
 
     # pause thread + lock thread

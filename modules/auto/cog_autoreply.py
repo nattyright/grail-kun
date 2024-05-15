@@ -32,10 +32,12 @@ class AutoReply(commands.Cog):
                 random.seed(datetime.now().timestamp())
                 if random.randint(0, 10) > 5: 
                     await message.channel.send('shuddup ' + member)
+
             if 'imsure' in msg or 'imprettysure' in msg:
                 random.seed(datetime.now().timestamp())
-                if random.randint(0, 10) > 5: 
+                if random.randint(0, 10) > 6: 
                     await message.channel.send('oh yeah, ' + member + '?')
+
             if 'lorenugg' in msg and not message.author.bot:
                 random.seed(datetime.now().timestamp())
                 if random.randint(0, 10) > 3: 
