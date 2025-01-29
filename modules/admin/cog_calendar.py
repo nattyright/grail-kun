@@ -135,7 +135,7 @@ def get_calendar_events_as_json():
 
     # Call the Calendar API
     now = datetime.datetime.now().isoformat() + 'Z' # 'Z' indicates UTC time
-    now_plus_one_month = (datetime.datetime.now() + datetime.timedelta(weeks=2)).isoformat() + 'Z'
+    now_plus_one_month = (datetime.datetime.now() + datetime.timedelta(weeks=4)).isoformat() + 'Z'
     # temporary for s3 signups period
     # now_plus_one_month = TIME_MAX
     #print('Getting the upcoming 10 events')
