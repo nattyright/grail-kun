@@ -134,8 +134,8 @@ def get_calendar_events_as_json():
     service = build('calendar', 'v3', http=http_auth)
 
     # Call the Calendar API
-    now = datetime.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
-    now_plus_one_month = (datetime.datetime.utcnow() + datetime.timedelta(weeks=2)).isoformat() + 'Z'
+    now = datetime.datetime.now().isoformat() + 'Z' # 'Z' indicates UTC time
+    now_plus_one_month = (datetime.datetime.now() + datetime.timedelta(weeks=2)).isoformat() + 'Z'
     # temporary for s3 signups period
     # now_plus_one_month = TIME_MAX
     #print('Getting the upcoming 10 events')
@@ -144,27 +144,34 @@ def get_calendar_events_as_json():
                                         maxResults=50, singleEvents=True,
                                         orderBy='startTime').execute()
     events = events_result.get('items', [])
+    print(events)
 
     # sort events into single and multi events
     if not events:
         print('No upcoming events found.')
     for event in events:
         event['event_end_date'] = datetime.datetime.strptime(event['end'].get('dateTime', event['end'].get('date')),
-                                                    '%Y-%m-%dT%H:%M:%SZ').date()
+                                                    '%Y-%m-%d').date()
         event['event_start_date'] = datetime.datetime.strptime(event['start'].get('dateTime', event['start'].get('date')),
-                                                      '%Y-%m-%dT%H:%M:%SZ').date()
+                                                      '%Y-%m-%d').date()
         event['duration'] = (event['event_end_date'] - event['event_start_date']).days
 
     # print event list
     #print('Ongoing Events')
     ongoing_event_message = ""
     for event in events:
-        current_date = datetime.datetime.utcnow().date()
+        current_date = datetime.datetime.now().date()
+        current_datetime = datetime.datetime.now()
         event_has_begun = (event['event_start_date'] <= current_date)
         if event_has_begun:
             if event['duration'] > 1:
-                days_left_in_event = (event['event_end_date'] - current_date).days
-                ongoing_event_message += '(' + str(days_left_in_event) + ' Days Remaining) ' + event['summary'] + '\n'
+                days_left_in_event = (event['event_end_date'] - current_date).days - 1
+                if days_left_in_event >= 1:
+                    ongoing_event_message += '(' + str(days_left_in_event) + ' Days Remaining) ' + event['summary'] + '\n'
+                else:
+                    end_of_day = current_datetime.replace(hour=23, minute=59, second=59)
+                    hours_remaining = (end_of_day - current_datetime).seconds // 3600
+                    ongoing_event_message += f'({hours_remaining} Hours Remaining) {event["summary"]}\n'
             else:
                 start = event['start'].get('dateTime', event['start'].get('date'))
                 ongoing_event_message += '(Today) ' + event['summary'] + '\n'
@@ -174,7 +181,7 @@ def get_calendar_events_as_json():
     upcoming_event_message = ""
     upcoming_event_date = ""
     for event in events:
-        current_date = datetime.datetime.utcnow().date()
+        current_date = datetime.datetime.now().date()
         start = event['start'].get('dateTime', event['start'].get('date'))
         event_has_begun = (event['event_start_date'] <= current_date)
 
@@ -186,8 +193,8 @@ def get_calendar_events_as_json():
             else:
                 upcoming_event_message += event['summary'] + '\n'
     #print(upcoming_event_message)
-    #datetime.datetime.utcnow().replace(second=0, microsecond=0).isoformat()[:-3]
-    cur_time = datetime.datetime.utcnow().strftime("%Y-%m-%d, %I:%M %p")
+    #datetime.datetime.now().replace(second=0, microsecond=0).isoformat()[:-3]
+    cur_time = datetime.datetime.now().strftime("%Y-%m-%d, %I:%M %p")
 
     discord_embed = {
         "content": cur_time,
