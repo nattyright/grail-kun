@@ -54,21 +54,16 @@ class GrailBot(commands.Bot):
 
     async def load_cogs(self) -> None:
         """
-        Load all cogs from the modules directory.
+        Load all cogs from the cogs directory.
         """
         loaded_cogs = 0
-        for folder in os.listdir("modules"):
-            folder_path = os.path.join("modules", folder)
-            if not os.path.isdir(folder_path):
-                continue
-
-            for file in os.listdir(folder_path):
-                if file.startswith("cog") and file.endswith(".py"):
-                    try:
-                        await self.load_extension(f"modules.{folder}.{file[:-3]}")
-                        loaded_cogs += 1
-                    except Exception as e:
-                        print(f"Failed to load extension {file}: {str(e)}")
+        for file in os.listdir("cogs"):
+            if file.startswith("cog") and file.endswith(".py"):
+                try:
+                    await self.load_extension(f"cogs.{file[:-3]}")
+                    loaded_cogs += 1
+                except Exception as e:
+                    print(f"Failed to load extension {file}: {str(e)}")
         
         print(f"Successfully loaded {loaded_cogs} cogs")
 
