@@ -468,6 +468,16 @@ class SheetWatchCog(commands.Cog):
         await self.repo.set_latest(doc_id, info.get("current", {}))
 
         if changed:
+            #  overwrite incident diffs + changed lists to the newest snapshot
+            await self.repo.update_incident_content(
+                incident_id,
+                changed_keys=info.get("changed_keys") or info.get("changed_sections") or [],
+                changed_sections=info.get("changed_sections", []),
+                diffs=info.get("diffs", {}),
+                from_hashes=info.get("from_hashes", {}),
+                to_hashes=info.get("to_hashes", {}),
+            )
+
             await self.repo.update_quarantine_repeat(doc_id, info["current"]["global_hash"])
         else:
             await self.repo.resolve_incident(incident_id, "reverted", 0, note="Content matches baseline again.")

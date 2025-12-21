@@ -205,6 +205,34 @@ class SheetRepo:
         inc = await self.find_open_incident(guild_id, doc_id)
         return str(inc["_id"]) if inc else None
 
+    async def update_incident_content(
+        self,
+        incident_id: str,
+        *,
+        changed_keys: list[str] | None = None,
+        changed_sections: list[str] | None = None,
+        diffs: dict | None = None,
+        from_hashes: dict | None = None,
+        to_hashes: dict | None = None,
+    ) -> None:
+        def _do():
+            update = {"updated_at": now_utc()}
+            if changed_keys is not None:
+                update["changed_keys"] = changed_keys
+            if changed_sections is not None:
+                update["changed_sections"] = changed_sections
+            if diffs is not None:
+                update["diffs"] = diffs
+            if from_hashes is not None:
+                update["from_hashes"] = from_hashes
+            if to_hashes is not None:
+                update["to_hashes"] = to_hashes
+
+            self.incidents.update_one(
+                {"_id": ObjectId(incident_id)},
+                {"$set": update}
+            )
+        await asyncio.to_thread(_do)
 
     async def attach_mod_message(self, incident_id: str, channel_id: int, message_id: int) -> None:
         def _do():
