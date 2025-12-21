@@ -2,6 +2,7 @@
 import discord
 import random
 from discord.ext import commands
+from discord import DMChannel
 from datetime import datetime
 
 
@@ -12,6 +13,15 @@ class AutoReply(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
+
+        # Ignore bots
+        if message.author.bot:
+            return
+
+        # Ignore DMs (no category, no guild)
+        if message.guild is None:
+            return
+    
         msg = message.content.lower()
         msg = ''.join(e for e in msg if e.isalnum())
 

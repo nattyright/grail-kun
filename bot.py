@@ -5,7 +5,7 @@ import os
 from dotenv import load_dotenv
 from discord.ext import commands, tasks
 from discord.ui import Select
-import mongodb_client
+import services.mongo as mongo
 from typing import Optional
 
 
@@ -31,8 +31,8 @@ class GrailBot(commands.Bot):
 
         # Initialize database connections
         # setup mongodb database
-        self.db = mongodb_client.get_database('grail-kun')
-        self.db_fan_servants = mongodb_client.get_database('fan-servants')
+        self.db = mongo.get_database('grail-kun')
+        self.db_fan_servants = mongo.get_database('fan-servants')
         self.sessions: Optional[aiohttp.ClientSession] = None
 
 
