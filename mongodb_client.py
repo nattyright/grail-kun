@@ -1,12 +1,16 @@
+from pymongo import MongoClient
+import os
+from dotenv import load_dotenv
+
 def get_database(dbname='grail-kun'):
-    from pymongo import MongoClient
-    import pymongo
+    # Load environment variables
+    load_dotenv()
 
-    # Provide the mongodb atlas url to connect python to mongodb using pymongo
-    CONNECTION_STRING = "mongodb+srv://grail-kun:kalzei77@grail-kun.j25p1.mongodb.net/grail-kun"
-
-    # Create a connection using MongoClient. You can import MongoClient or use pymongo.MongoClient
-    client = MongoClient(CONNECTION_STRING)
-
-    # Create the database for our example (we will use the same database throughout the tutorial
+    # Get connection string from .env file
+    connection_string = os.getenv("MONGODB_URI")
+    if not connection_string:
+        raise ValueError("MongoDB URI not found in .env file")
+    
+    # Create and return database connection
+    client = MongoClient(connection_string)
     return client[dbname]
