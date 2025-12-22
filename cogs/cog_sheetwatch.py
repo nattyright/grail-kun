@@ -329,7 +329,7 @@ class SheetWatchCog(commands.Cog):
             description=f"**Owner:** {owner_mention}\n**Doc:** {url}\n**Status:** {status}",
         )
         if changed_sections:
-            e.add_field(name="Changed sections", value=", ".join(changed_sections), inline=False)
+            e.add_field(name="Changed sections", value=", ".join(changed_sections), inline=True)
 
         if sheet and sheet.get("status") == "quarantined":
             q = sheet.get("quarantine") or {}
@@ -338,7 +338,7 @@ class SheetWatchCog(commands.Cog):
         if incident.get("resolved_at"):
             resolved_at_dt = incident["resolved_at"]
             unix_timestamp = int(resolved_at_dt.timestamp())
-            e.add_field(name="Resolved at", value=f"<t:{unix_timestamp}:f>", inline=False)
+            e.add_field(name="Resolved at", value=f"<t:{unix_timestamp}:f>", inline=True)
             rb = incident.get("resolved_by_user_id")
             e.add_field(name="Resolved by", value=f"<@{rb}>" if rb else "(unknown)", inline=True)
             if incident.get("resolution_note"):
