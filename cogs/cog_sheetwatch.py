@@ -327,7 +327,6 @@ class SheetWatchCog(commands.Cog):
         e = discord.Embed(
             title="⚠️ Approved character sheet changed",
             description=f"**Owner:** {owner_mention}\n**Doc:** {url}\n**Status:** {status}",
-            timestamp=incident.get("opened_at")
         )
         if changed_sections:
             e.add_field(name="Changed sections", value=", ".join(changed_sections), inline=False)
@@ -337,7 +336,9 @@ class SheetWatchCog(commands.Cog):
             e.add_field(name="Quarantine", value=f"Active: {q.get('active')}\nRepeats: {q.get('repeats', 0)}", inline=True)
 
         if incident.get("resolved_at"):
-            e.add_field(name="Resolved at", value=str(incident["resolved_at"]), inline=False)
+            resolved_at_dt = incident["resolved_at"]
+            unix_timestamp = int(resolved_at_dt.timestamp())
+            e.add_field(name="Resolved at", value=f"<t:{unix_timestamp}:f>", inline=False)
             rb = incident.get("resolved_by_user_id")
             e.add_field(name="Resolved by", value=f"<@{rb}>" if rb else "(unknown)", inline=True)
             if incident.get("resolution_note"):
