@@ -20,8 +20,8 @@ import asyncio
 from typing import Any, Dict, List, Optional
 
 DEFAULTS = {
-    "check_interval_minutes": 720,   # 12 hours
-    "history_scan_limit": 200,
+    "check_interval_minutes": 360,   # 6 hours
+    "history_scan_limit": 500,       # number of messages read per tracked channel
     "max_diff_chars": 3500,
     "max_sections_to_post": 6,
 

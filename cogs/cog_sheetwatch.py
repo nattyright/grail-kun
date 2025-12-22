@@ -615,7 +615,7 @@ class SheetWatchCog(commands.Cog):
     # Periodic loop (interval from config)
     # -----------------------------
 
-    @tasks.loop(minutes=720)  # 12 hours
+    @tasks.loop()  # Interval is now set dynamically
     async def check_loop(self):
         """
         Periodically checks approved sheets for unauthorized changes.
@@ -628,6 +628,18 @@ class SheetWatchCog(commands.Cog):
 
         import asyncio
         import random
+
+        # Dynamically update interval for next run
+        if self.bot.guilds:
+            try:
+                cfg = await self.cfg_repo.get(self.bot.guilds[0].id)
+                interval = float(cfg.get("check_interval_minutes", 720))
+                if self.check_loop.minutes != interval:
+                    self.check_loop.change_interval(minutes=interval)
+            except Exception:
+                # Ignore errors here, we don't want to stop the loop
+                pass
+
 
         for guild in self.bot.guilds:
             cfg = await self.cfg_repo.get(guild.id)
@@ -715,6 +727,16 @@ class SheetWatchCog(commands.Cog):
     @check_loop.before_loop
     async def before_check_loop(self):
         await self.bot.wait_until_ready()
+        # Set the initial interval
+        if self.bot.guilds:
+            try:
+                cfg = await self.cfg_repo.get(self.bot.guilds[0].id)
+                interval = float(cfg.get("check_interval_minutes", 720))
+                self.check_loop.change_interval(minutes=interval)
+            except Exception:
+                # If this fails, the loop will run with its default interval (60s)
+                # which is not ideal, but won't break it.
+                pass
 
     # -----------------------------
     # Baseline worker + queue
