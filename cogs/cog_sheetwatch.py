@@ -95,11 +95,19 @@ class SheetWatchCog(commands.Cog):
         self.baseline_inflight: set[str] = set()  # in-memory dedupe
         self.baseline_worker.start()
 
+        self._initial_check_done = False
         self.check_loop.start()
 
     def cog_unload(self):
         self.check_loop.cancel()
         self.baseline_worker.cancel()
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        """Perform one check loop on startup."""
+        if not self._initial_check_done:
+            self._initial_check_done = True
+            await self.check_loop()
 
     # -----------------------------
     # Discovery
