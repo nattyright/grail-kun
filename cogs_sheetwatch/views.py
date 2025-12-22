@@ -21,11 +21,14 @@ from __future__ import annotations
 import discord
 
 class IncidentView(discord.ui.View):
-    def __init__(self, cog, *, incident_id: str, doc_id: str):
+    def __init__(self, cog, *, incident_id: str, doc_id: str, incident_status: str):
         super().__init__(timeout=None)
         self.cog = cog
         self.incident_id = incident_id
         self.doc_id = doc_id
+
+        if incident_status == "rejected":
+            self.reject.disabled = True
 
     async def _guard(self, interaction: discord.Interaction) -> bool:
         if not interaction.user.guild_permissions.manage_guild:
@@ -33,8 +36,8 @@ class IncidentView(discord.ui.View):
             return False
 
         inc = await self.cog.repo.get_incident(self.incident_id)
-        if not inc or inc.get("status") != "open":
-            await interaction.response.send_message("This incident is already resolved.", ephemeral=True)
+        if not inc or inc.get("status") not in ("open", "rejected"):
+            await interaction.response.send_message("This incident is already resolved and cannot be modified.", ephemeral=True)
             return False
 
         return True

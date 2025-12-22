@@ -378,7 +378,15 @@ class SheetWatchCog(commands.Cog):
             return
 
         embed = await self.build_incident_embed(guild_id, inc)
-        view = IncidentView(self, incident_id=incident_id, doc_id=inc["doc_id"]) if inc.get("status") == "open" else None
+        status = inc.get("status", "open")
+        view = None
+        if status in ("open", "rejected"):
+            view = IncidentView(
+                self,
+                incident_id=incident_id,
+                doc_id=inc["doc_id"],
+                incident_status=status
+            )
         await msg.edit(embed=embed, view=view)
 
     # -----------------------------
