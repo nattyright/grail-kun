@@ -328,14 +328,22 @@ class SheetWatchCog(commands.Cog):
             title="⚠️ Approved character sheet changed",
             description=f"**Owner:** {owner_mention}\n**Doc:** {url}\n**Status:** {status}",
         )
+
+        has_top_fields = False
+
         if changed_sections:
             e.add_field(name="Changed sections", value=", ".join(changed_sections), inline=True)
+            has_top_fields = True
 
         if sheet and sheet.get("status") == "quarantined":
             q = sheet.get("quarantine") or {}
             e.add_field(name="Quarantine", value=f"Active: {q.get('active')}\nRepeats: {q.get('repeats', 0)}", inline=True)
+            has_top_fields = True
 
         if incident.get("resolved_at"):
+            if has_top_fields:
+                e.add_field(name="\u200b", value="\u200b", inline=False) # Invisible separator
+
             resolved_at_dt = incident["resolved_at"]
             unix_timestamp = int(resolved_at_dt.timestamp())
             e.add_field(name="Resolved at", value=f"<t:{unix_timestamp}:f>", inline=True)
