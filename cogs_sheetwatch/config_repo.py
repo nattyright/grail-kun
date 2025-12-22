@@ -76,3 +76,12 @@ class GuildConfigRepo:
                 upsert=True
             )
         await asyncio.to_thread(_set)
+
+    async def set_mod_roles(self, guild_id: int, role_ids: List[int]) -> None:
+        def _set():
+            self.col.update_one(
+                {"guild_id": str(guild_id)},
+                {"$set": {"mod_role_ids": [str(x) for x in role_ids]}},
+                upsert=True
+            )
+        await asyncio.to_thread(_set)

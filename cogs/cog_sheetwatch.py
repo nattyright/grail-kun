@@ -71,6 +71,26 @@ async def _dump_debug(doc_id: str, raw: str):
     await asyncio.to_thread(file_path.write_text, formatted, encoding="utf-8")
 
 
+def is_mod_or_admin():
+    async def predicate(ctx: commands.Context) -> bool:
+        if ctx.author.guild_permissions.manage_guild:
+            return True
+        
+        if not ctx.cog:
+            return False
+
+        cfg = await ctx.cog.cfg_repo.get(ctx.guild.id)
+        mod_role_ids = {int(r) for r in cfg.get("mod_role_ids", [])}
+        
+        if not mod_role_ids:
+            return False
+
+        author_role_ids = {r.id for r in ctx.author.roles}
+        return not mod_role_ids.isdisjoint(author_role_ids)
+
+    return commands.check(predicate)
+
+
 class SheetWatchCog(commands.Cog):
     """
     Google Doc character sheet anti-tamper system:
@@ -771,17 +791,22 @@ class SheetWatchCog(commands.Cog):
     # -----------------------------
 
     @commands.group(name="sheet", invoke_without_command=True)
-    @commands.has_permissions(manage_guild=True)
+    @is_mod_or_admin()
     async def sheet_group(self, ctx: commands.Context):
         cfg = await self.cfg_repo.get(ctx.guild.id)
+        mod_roles = cfg.get("mod_role_ids", [])
+        mod_role_mentions = [f"<@&{r}>" for r in mod_roles] or ["(not set)"]
+
         await ctx.send(
             "Commands:\n"
-            "- `f.sheet setmod #channel`\n"
-            "- `f.sheet settracked #ch1 #ch2 ...`\n"
+            "- `f.sheet setmod #channel` (admin)\n"
+            "- `f.sheet settracked #ch1 #ch2 ...` (admin)\n"
+            "- `f.sheet setmodrole @role ...` (admin)\n"
             "- `f.sheet rescan`\n"
             "- `f.sheet audit <google_doc_url>`\n"
             f"\nCurrent:\n"
             f"- Mod channel: {cfg.get('mod_alert_channel_id')}\n"
+            f"- Mod roles: {', '.join(mod_role_mentions)}\n"
             f"- Tracked: {cfg.get('tracked_channel_ids')}\n"
             f"- Check interval (min): {cfg.get('check_interval_minutes')}"
         )
@@ -801,14 +826,27 @@ class SheetWatchCog(commands.Cog):
         await self.cfg_repo.set_tracked_channels(ctx.guild.id, [c.id for c in channels])
         await ctx.send("Tracked channels updated:\n" + "\n".join(c.mention for c in channels))
 
-    @sheet_group.command(name="rescan")
+    @sheet_group.command(name="setmodrole")
     @commands.has_permissions(manage_guild=True)
+    async def set_mod_role(self, ctx: commands.Context, *roles: discord.Role):
+        if not roles:
+            await self.cfg_repo.set_mod_roles(ctx.guild.id, [])
+            await ctx.send("Moderator roles cleared. Only users with 'Manage Server' can run commands.")
+            return
+
+        role_ids = [r.id for r in roles]
+        await self.cfg_repo.set_mod_roles(ctx.guild.id, role_ids)
+        await ctx.send("Moderator roles updated to:\n" + "\n".join(r.mention for r in roles))
+
+
+    @sheet_group.command(name="rescan")
+    @is_mod_or_admin()
     async def rescan(self, ctx: commands.Context):
         await self.active_rescan(ctx.guild)
         await ctx.send("Rescan complete.")
 
     @sheet_group.command(name="audit")
-    @commands.has_permissions(manage_guild=True)
+    @is_mod_or_admin()
     async def audit(self, ctx: commands.Context, doc_url: str):
         doc_id = extract_doc_id(doc_url)
         if not doc_id:
@@ -849,7 +887,7 @@ class SheetWatchCog(commands.Cog):
             - If not changed and quarantined → resolves as reverted + clears quarantine
     """
     @sheet_group.command(name="check")
-    @commands.has_permissions(manage_guild=True)
+    @is_mod_or_admin()
     async def manual_check(self, ctx: commands.Context, doc_url: str):
         doc_id = extract_doc_id(doc_url)
         if not doc_id:
@@ -913,7 +951,7 @@ class SheetWatchCog(commands.Cog):
         Same as above but check via doc id directly
     """
     @sheet_group.command(name="checkid")
-    @commands.has_permissions(manage_guild=True)
+    @is_mod_or_admin()
     async def manual_check_id(self, ctx: commands.Context, doc_id: str):
         await self.manual_check(ctx, f"https://docs.google.com/document/d/{doc_id}/edit")
 
@@ -922,7 +960,7 @@ class SheetWatchCog(commands.Cog):
         It does not quarantine / incident-open unless you want it to.
     """
     @sheet_group.command(name="diff")
-    @commands.has_permissions(manage_guild=True)
+    @is_mod_or_admin()
     async def manual_diff(self, ctx: commands.Context, doc_url: str):
         doc_id = extract_doc_id(doc_url)
         if not doc_id:
