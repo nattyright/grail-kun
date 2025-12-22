@@ -407,10 +407,18 @@ class SheetWatchCog(commands.Cog):
             )
         await msg.edit(embed=embed, view=view)
 
-        # Unpin if approved
-        if status == "approved" and msg.pinned:
+        # Enforce pin state based on incident status
+        is_active = status in ("open", "rejected")
+        is_resolved = status in ("approved", "dismissed", "reverted")
+
+        if is_active and not msg.pinned:
             try:
-                await msg.unpin(reason="Sheet incident approved.")
+                await msg.pin(reason="Active sheet incident.")
+            except discord.Forbidden:
+                pass
+        elif is_resolved and msg.pinned:
+            try:
+                await msg.unpin(reason=f"Sheet incident {status}.")
             except discord.Forbidden:
                 pass
 
