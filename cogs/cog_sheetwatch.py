@@ -633,6 +633,10 @@ class SheetWatchCog(commands.Cog):
                         doc_id,
                         info["current"]["global_hash"]
                     )
+                    q = sheet.get("quarantine") or {}
+                    inc_id = q.get("incident_id")
+                    if inc_id:
+                        await self.refresh_incident_message(guild.id, inc_id)
                     return
 
                 await self.open_incident(guild, sheet, info)
