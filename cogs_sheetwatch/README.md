@@ -8,6 +8,10 @@ Set mod channel:
 
 Set channels that contain the sheet messages:
 
+`f.sheet setmodrole @roles`
+
+Set roles that can user the sheetwatch commands aside from the admin ones
+
 `f.sheet settracked #approved-sheets #approved-sheets-2`
 
 Discover existing sheets:
@@ -20,11 +24,6 @@ Approve a baseline for a doc:
 
 
 
-
-Absolutely — here’s a **short, non-technical, mod-friendly command list** you can drop straight into your README.
-No jargon, no implementation detail, just *what mods need to know*.
-
----
 
 # 📄 SheetWatch – Moderator Commands
 
@@ -43,6 +42,18 @@ Sets where SheetWatch posts alerts when a sheet is changed.
 
 ```
 f.sheet setmod #mod-alerts
+```
+
+---
+
+## 🔧 Setup (one-time)
+
+### `f.sheet setmodrole @roles`
+
+Set roles that can user the sheetwatch commands aside from the admin ones
+
+```
+f.sheet setmodrole @sheetmod
 ```
 
 ---
