@@ -364,10 +364,16 @@ class SheetWatchCog(commands.Cog):
             return
 
         embed = await self.build_incident_embed(guild.id, inc)
-        view = IncidentView(self, incident_id=incident_id, doc_id=doc_id)
+        view = IncidentView(self, incident_id=incident_id, doc_id=doc_id, incident_status="open")
 
         msg = await ch.send(embed=embed, view=view)
         await self.repo.attach_mod_message(incident_id, ch.id, msg.id)
+
+        if not msg.pinned:
+            try:
+                await msg.pin(reason="New sheet incident opened.")
+            except discord.Forbidden:
+                pass
 
     async def refresh_incident_message(self, guild_id: int, incident_id: str) -> None:
         inc = await self.repo.get_incident(incident_id)
@@ -400,6 +406,13 @@ class SheetWatchCog(commands.Cog):
                 incident_status=status
             )
         await msg.edit(embed=embed, view=view)
+
+        # Unpin if approved
+        if status == "approved" and msg.pinned:
+            try:
+                await msg.unpin(reason="Sheet incident approved.")
+            except discord.Forbidden:
+                pass
 
     # -----------------------------
     # Incident opening
