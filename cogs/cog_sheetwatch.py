@@ -999,7 +999,7 @@ class SheetWatchCog(commands.Cog):
 
     @sheet_group.command(name="unused")
     @is_mod_or_admin()
-    async def review_unused(self, ctx: commands.Context, user: discord.Member):
+    async def review_unused(self, ctx: commands.Context, user: discord.User):
         """Review all unused sheets for a specific user."""
         sheets = await self.repo.get_all_unused_sheets_for_user(ctx.guild.id, user.id)
         if not sheets:
@@ -1014,7 +1014,7 @@ class SheetWatchCog(commands.Cog):
 
     @sheet_group.command(name="used")
     @is_mod_or_admin()
-    async def review_used(self, ctx: commands.Context, user: discord.Member):
+    async def review_used(self, ctx: commands.Context, user: discord.User):
         """Review all used sheets for a specific user."""
         sheets = await self.repo.get_all_used_sheets_for_user(ctx.guild.id, user.id)
         if not sheets:
