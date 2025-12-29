@@ -19,6 +19,7 @@ Important:
 
 from __future__ import annotations
 import discord
+from datetime import datetime, timezone
 
 class IncidentView(discord.ui.View):
     def __init__(self, cog, *, incident_id: str, doc_id: str, incident_status: str):
@@ -154,6 +155,18 @@ class UserSheetReviewView(discord.ui.View):
         )
         e.add_field(name="Sheet URL", value=sheet.get("url", "(no url)"), inline=False)
         e.add_field(name="Status", value=status_text, inline=True)
+        
+        last_changed_by = sheet.get("is_used_last_changed_by_user_id")
+        last_changed_at = sheet.get("is_used_last_changed_at")
+
+        if last_changed_by and last_changed_at:
+            unix_timestamp = int(last_changed_at.timestamp())
+            e.add_field(
+                name="Last Status Change",
+                value=f"By <@{last_changed_by}> at <t:{unix_timestamp}:f>",
+                inline=True
+            )
+
         e.set_footer(text=f"Doc ID: {sheet['_id']}")
         return e
 
@@ -204,6 +217,8 @@ class UserSheetReviewView(discord.ui.View):
         )
         # Update local state and redraw
         self.sheets[self.current_index]['is_used'] = True
+        self.sheets[self.current_index]['is_used_last_changed_by_user_id'] = str(interaction.user.id)
+        self.sheets[self.current_index]['is_used_last_changed_at'] = datetime.now(timezone.utc)
         await self._update_view(interaction)
 
     @discord.ui.button(label="Set as Unused", style=discord.ButtonStyle.danger)
@@ -219,6 +234,8 @@ class UserSheetReviewView(discord.ui.View):
         )
         # Update local state and redraw
         self.sheets[self.current_index]['is_used'] = False
+        self.sheets[self.current_index]['is_used_last_changed_by_user_id'] = str(interaction.user.id)
+        self.sheets[self.current_index]['is_used_last_changed_at'] = datetime.now(timezone.utc)
         await self._update_view(interaction)
 
 
