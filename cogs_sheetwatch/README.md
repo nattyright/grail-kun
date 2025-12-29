@@ -70,6 +70,19 @@ f.sheet settracked #approved-sheets
 
 ---
 
+### `f.sheet setsubmission #channel`
+
+Marks a single channel that contain **newly submitted character sheets**.
+
+Any message in these channels that mentions a user and links a Google Doc is subject to the unused sheet tally.
+
+```
+f.sheet setsubmission #character-submission
+```
+
+
+---
+
 ## 🚨 Checking Sheets
 
 ### `f.sheet check <google doc link>`
@@ -81,6 +94,30 @@ Manually check a sheet **right now**.
 
 ```
 f.sheet check https://docs.google.com/document/d/XXXX/edit
+```
+
+---
+
+## 🚨 Checking UNUSED Sheets
+
+### `f.sheet unused @user`
+
+Manually check a user's UNUSED sheet **right now**.
+
+```
+f.sheet unused @nat
+```
+
+---
+
+## 🚨 Checking USED Sheets
+
+### `f.sheet used @user`
+
+Manually check a user's USED sheet **right now**.
+
+```
+f.sheet used @nat
 ```
 
 ---

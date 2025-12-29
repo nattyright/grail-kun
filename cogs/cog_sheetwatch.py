@@ -439,10 +439,12 @@ class SheetWatchCog(commands.Cog):
                 if not interaction.user.guild_permissions.manage_guild:
                     await interaction.response.send_message("You don't have permission to do this.", ephemeral=True)
                     return
+                
+                await interaction.response.defer()
 
                 sheets = await self.cog.repo.get_all_unused_sheets_for_user(interaction.guild_id, self.owner_id)
                 if not sheets:
-                    await interaction.response.send_message("No unused sheets found for this user anymore.", ephemeral=True)
+                    await interaction.followup.send("No unused sheets found for this user anymore.", ephemeral=True)
                     return
                 
                 # Disable the button on the original message
@@ -451,7 +453,11 @@ class SheetWatchCog(commands.Cog):
                 await interaction.message.edit(view=self)
 
                 review_view = UserSheetReviewView(self.cog, owner_id=self.owner_id, sheets=sheets)
-                await review_view.start(interaction)
+                
+                # Manually do what start() used to do
+                review_view._update_buttons()
+                embed = review_view._build_embed()
+                review_view.message = await interaction.followup.send(embed=embed, view=review_view, wait=True)
 
         cfg = await self.cfg_repo.get(guild.id)
         mod_ch_id = cfg.get("mod_alert_channel_id")
@@ -990,6 +996,36 @@ class SheetWatchCog(commands.Cog):
     async def setsubmission(self, ctx: commands.Context, channel: discord.TextChannel):
         await self.cfg_repo.set_submission_channel(ctx.guild.id, channel.id)
         await ctx.send(f"Sheet submission channel set to {channel.mention}")
+
+    @sheet_group.command(name="unused")
+    @is_mod_or_admin()
+    async def review_unused(self, ctx: commands.Context, user: discord.Member):
+        """Review all unused sheets for a specific user."""
+        sheets = await self.repo.get_all_unused_sheets_for_user(ctx.guild.id, user.id)
+        if not sheets:
+            await ctx.send(f"No unused sheets found for {user.mention}.")
+            return
+        
+        review_view = UserSheetReviewView(self, owner_id=user.id, sheets=sheets, mode='unused')
+        
+        review_view._update_buttons()
+        embed = review_view._build_embed()
+        review_view.message = await ctx.send(embed=embed, view=review_view)
+
+    @sheet_group.command(name="used")
+    @is_mod_or_admin()
+    async def review_used(self, ctx: commands.Context, user: discord.Member):
+        """Review all used sheets for a specific user."""
+        sheets = await self.repo.get_all_used_sheets_for_user(ctx.guild.id, user.id)
+        if not sheets:
+            await ctx.send(f"No used sheets found for {user.mention}.")
+            return
+        
+        review_view = UserSheetReviewView(self, owner_id=user.id, sheets=sheets, mode='used')
+        
+        review_view._update_buttons()
+        embed = review_view._build_embed()
+        review_view.message = await ctx.send(embed=embed, view=review_view)
 
     @sheet_group.command(name="rescan")
     @is_mod_or_admin()

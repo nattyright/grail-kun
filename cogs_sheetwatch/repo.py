@@ -204,6 +204,15 @@ class SheetRepo:
             }))
         return await asyncio.to_thread(_do)
 
+    async def get_all_used_sheets_for_user(self, guild_id: int, owner_user_id: int) -> list[dict]:
+        def _do() -> list[dict]:
+            return list(self.sheets.find({
+                "guild_id": str(guild_id),
+                "owner_user_id": str(owner_user_id),
+                "is_used": True
+            }))
+        return await asyncio.to_thread(_do)
+
     async def set_sheet_used_status(self, doc_id: str, *, is_used: bool) -> None:
         def _do():
             self.sheets.update_one(

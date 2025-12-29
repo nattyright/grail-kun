@@ -106,13 +106,24 @@ class IncidentView(discord.ui.View):
 
 
 class UserSheetReviewView(discord.ui.View):
-    def __init__(self, cog, *, owner_id: int, sheets: list[dict]):
+    def __init__(self, cog, *, owner_id: int, sheets: list[dict], mode: str = 'unused'):
         super().__init__(timeout=3600)  # 1 hour timeout
         self.cog = cog
         self.owner_id = owner_id
         self.sheets = sheets
         self.initial_count = len(sheets)
         self.current_index = 0
+        self.mode = mode
+        self.message = None
+
+    async def on_timeout(self):
+        try:
+            if self.message:
+                for item in self.children:
+                    item.disabled = True
+                await self.message.edit(content="*This review session has timed out.*", view=self)
+        except discord.NotFound:
+            pass # Message was deleted
 
     async def _guard(self, interaction: discord.Interaction) -> bool:
         if not interaction.user.guild_permissions.manage_guild:
@@ -121,22 +132,29 @@ class UserSheetReviewView(discord.ui.View):
         return True
 
     def _build_embed(self) -> discord.Embed:
-        if not self.sheets:
-            return discord.Embed(
-                title="Review Complete",
-                description="All unused sheets for this user have been reviewed.",
-                color=discord.Color.green()
-            )
-
         sheet = self.sheets[self.current_index]
         owner_mention = f"<@{self.owner_id}>"
+        is_sheet_used = sheet.get('is_used', False)
+        status_text = "Used" if is_sheet_used else "Unused"
         
+        mode_text = "Unused" if self.mode == "unused" else "Used"
+        title = f"Reviewing {mode_text} Sheets for {owner_mention}"
+
+        if self.mode == 'unused':
+            current_count = sum(1 for s in self.sheets if not s.get('is_used', False))
+            count_text = f"({current_count} Unused)"
+        else:
+            current_count = sum(1 for s in self.sheets if s.get('is_used', False))
+            count_text = f"({current_count} Used)"
+
+
         e = discord.Embed(
-            title=f"Reviewing Unused Sheets for {owner_mention}",
-            description=f"Sheet {self.current_index + 1} of {self.initial_count} (Remaining: {len(self.sheets)})",
-            color=discord.Color.blue()
+            title=title,
+            description=f"Sheet **{self.current_index + 1} of {self.initial_count}** {count_text}",
+            color=discord.Color.green() if is_sheet_used else discord.Color.gold()
         )
         e.add_field(name="Sheet URL", value=sheet.get("url", "(no url)"), inline=False)
+        e.add_field(name="Status", value=status_text, inline=True)
         e.set_footer(text=f"Doc ID: {sheet['_id']}")
         return e
 
@@ -150,10 +168,10 @@ class UserSheetReviewView(discord.ui.View):
         self.prev_sheet.disabled = self.current_index == 0
         self.next_sheet.disabled = self.current_index >= len(self.sheets) - 1
         
-    async def start(self, interaction: discord.Interaction):
-        self._update_buttons()
-        embed = self._build_embed()
-        await interaction.response.send_message(embed=embed, view=self, ephemeral=False)
+        # Action buttons
+        current_sheet_is_used = self.sheets[self.current_index].get('is_used', False)
+        self.set_used.disabled = current_sheet_is_used
+        self.set_unused.disabled = not current_sheet_is_used
 
     async def _update_view(self, interaction: discord.Interaction):
         self._update_buttons()
@@ -185,12 +203,8 @@ class UserSheetReviewView(discord.ui.View):
             mod_user_id=interaction.user.id,
             interaction=interaction
         )
-
-        # Remove from list and update index
-        self.sheets.pop(self.current_index)
-        if self.current_index >= len(self.sheets) and self.sheets:
-            self.current_index = len(self.sheets) - 1
-
+        # Update local state and redraw
+        self.sheets[self.current_index]['is_used'] = True
         await self._update_view(interaction)
 
     @discord.ui.button(label="Set as Unused", style=discord.ButtonStyle.danger)
@@ -204,10 +218,9 @@ class UserSheetReviewView(discord.ui.View):
             mod_user_id=interaction.user.id,
             interaction=interaction
         )
-        # This action doesn't remove it from the list, just updates it.
-        # We can refresh to show any potential change in the embed if we want.
-        await interaction.response.defer() # Acknowledge the click
-        await interaction.followup.send(f"Sheet marked as 'Unused'.", ephemeral=True)
+        # Update local state and redraw
+        self.sheets[self.current_index]['is_used'] = False
+        await self._update_view(interaction)
 
 
     @discord.ui.button(label="Close Session", style=discord.ButtonStyle.grey)
