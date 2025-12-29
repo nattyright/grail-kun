@@ -213,11 +213,15 @@ class SheetRepo:
             }))
         return await asyncio.to_thread(_do)
 
-    async def set_sheet_used_status(self, doc_id: str, *, is_used: bool) -> None:
+    async def set_sheet_used_status(self, doc_id: str, *, is_used: bool, changed_by_user_id: int) -> None:
         def _do():
             self.sheets.update_one(
                 {"_id": doc_id},
-                {"$set": {"is_used": is_used}}
+                {"$set": {
+                    "is_used": is_used,
+                    "is_used_last_changed_by_user_id": str(changed_by_user_id),
+                    "is_used_last_changed_at": now_utc()
+                }}
             )
         await asyncio.to_thread(_do)
 

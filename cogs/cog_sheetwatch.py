@@ -734,7 +734,7 @@ class SheetWatchCog(commands.Cog):
             await interaction.followup.send("Cannot find this sheet.", ephemeral=True)
             return
 
-        await self.repo.set_sheet_used_status(doc_id, is_used=is_used)
+        await self.repo.set_sheet_used_status(doc_id, is_used=is_used, changed_by_user_id=mod_user_id)
         await self.repo.add_audit(
             interaction.guild.id,
             doc_id,
