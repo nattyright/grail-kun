@@ -65,21 +65,28 @@ class SheetRepo:
     # ---- sheets ----
 
     async def upsert_sheet(self, *, doc_id: str, guild_id: int, owner_user_id: int, url: str,
-                           source_channel_id: int, source_message_id: int) -> None:
+                           source_channel_id: int, source_message_id: int) -> bool:
         def _do():
-            self.sheets.update_one(
+            result = self.sheets.update_one(
                 {"_id": doc_id},
-                {"$set": {
-                    "guild_id": str(guild_id),
-                    "owner_user_id": str(owner_user_id),
-                    "url": url,
-                    "source_channel_id": str(source_channel_id),
-                    "source_message_id": str(source_message_id),
-                    "updated_at": now_utc(),
-                }},
+                {
+                    "$set": {
+                        "guild_id": str(guild_id),
+                        "owner_user_id": str(owner_user_id),
+                        "url": url,
+                        "source_channel_id": str(source_channel_id),
+                        "source_message_id": str(source_message_id),
+                        "updated_at": now_utc(),
+                    },
+                    "$setOnInsert": {
+                        "is_used": False,
+                        "created_at": now_utc()
+                    }
+                },
                 upsert=True
             )
-        await asyncio.to_thread(_do)
+            return result.upserted_id is not None
+        return await asyncio.to_thread(_do)
 
     async def get_sheet(self, doc_id: str) -> Optional[Dict[str, Any]]:
         return await asyncio.to_thread(lambda: self.sheets.find_one({"_id": doc_id}))
@@ -175,6 +182,33 @@ class SheetRepo:
             self.sheets.update_one(
                 {"_id": doc_id},
                 {"$set": {"status": "ok", "quarantine": None}}
+            )
+        await asyncio.to_thread(_do)
+
+    async def count_unused_sheets_for_user(self, guild_id: int, owner_user_id: int) -> int:
+        def _do() -> int:
+            # {is_used: {$ne: true}} includes both `is_used: false` and docs where the field is missing
+            return self.sheets.count_documents({
+                "guild_id": str(guild_id),
+                "owner_user_id": str(owner_user_id),
+                "is_used": {"$ne": True}
+            })
+        return await asyncio.to_thread(_do)
+
+    async def get_all_unused_sheets_for_user(self, guild_id: int, owner_user_id: int) -> list[dict]:
+        def _do() -> list[dict]:
+            return list(self.sheets.find({
+                "guild_id": str(guild_id),
+                "owner_user_id": str(owner_user_id),
+                "is_used": {"$ne": True}
+            }))
+        return await asyncio.to_thread(_do)
+
+    async def set_sheet_used_status(self, doc_id: str, *, is_used: bool) -> None:
+        def _do():
+            self.sheets.update_one(
+                {"_id": doc_id},
+                {"$set": {"is_used": is_used}}
             )
         await asyncio.to_thread(_do)
 

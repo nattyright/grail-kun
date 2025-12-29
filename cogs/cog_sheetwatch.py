@@ -56,7 +56,7 @@ from cogs_sheetwatch.processing import (
     global_hash, diff_words,
     extract_pairs_from_message
 )
-from cogs_sheetwatch.views import IncidentView
+from cogs_sheetwatch.views import IncidentView, UserSheetReviewView
 
 
 import asyncio
@@ -150,7 +150,7 @@ class SheetWatchCog(commands.Cog):
         # If message content includes real mentions, Discord may also populate msg.mentions;
         # we intentionally prefer per-embed parsing above.
         for owner_id, doc_id, doc_url in pairs:
-            await self.repo.upsert_sheet(
+            was_inserted = await self.repo.upsert_sheet(
                 doc_id=doc_id,
                 guild_id=msg.guild.id,
                 owner_user_id=owner_id,
@@ -159,8 +159,16 @@ class SheetWatchCog(commands.Cog):
                 source_message_id=msg.id
             )
 
-            # Enqueue baseline creation if needed (per doc_id)
             sheet = await self.repo.get_sheet(doc_id)
+
+            # If a new sheet was added, check the user's quota
+            if was_inserted and sheet:
+                unused_count = await self.repo.count_unused_sheets_for_user(msg.guild.id, owner_id)
+                # The user requested "exceeded 3", so we flag when the 4th is added.
+                if unused_count > 3:
+                    await self.flag_sheet_for_review(msg.guild, sheet, unused_count)
+
+            # Enqueue baseline creation if needed (per doc_id)
             if sheet and not sheet.get("approved"):
                 # enqueue once (dedupe)
                 if doc_id not in self.baseline_inflight:
@@ -368,6 +376,59 @@ class SheetWatchCog(commands.Cog):
                 e.add_field(name="Note", value=incident["resolution_note"], inline=False)
 
         return e
+
+    async def flag_sheet_for_review(self, guild: discord.Guild, sheet: dict, unused_count: int):
+        owner_id = sheet.get("owner_user_id")
+
+        class QuotaAlertView(discord.ui.View):
+            def __init__(self, cog, owner_id: int):
+                super().__init__(timeout=None)
+                self.cog = cog
+                self.owner_id = owner_id
+
+            @discord.ui.button(label="Review All Unused Sheets", style=discord.ButtonStyle.primary)
+            async def review_all(self, interaction: discord.Interaction, _):
+                if not interaction.user.guild_permissions.manage_guild:
+                    await interaction.response.send_message("You don't have permission to do this.", ephemeral=True)
+                    return
+
+                sheets = await self.cog.repo.get_all_unused_sheets_for_user(interaction.guild_id, self.owner_id)
+                if not sheets:
+                    await interaction.response.send_message("No unused sheets found for this user anymore.", ephemeral=True)
+                    return
+                
+                # Disable the button on the original message
+                for item in self.children:
+                    item.disabled = True
+                await interaction.message.edit(view=self)
+
+                review_view = UserSheetReviewView(self.cog, owner_id=self.owner_id, sheets=sheets)
+                await review_view.start(interaction)
+
+        cfg = await self.cfg_repo.get(guild.id)
+        mod_ch_id = cfg.get("mod_alert_channel_id")
+        if not mod_ch_id:
+            return
+
+        ch = guild.get_channel(int(mod_ch_id))
+        if not isinstance(ch, discord.TextChannel):
+            return
+
+        owner_mention = f"<@{owner_id}>" if owner_id else "(unknown user)"
+        url = sheet.get("url", "(no url stored)")
+
+        e = discord.Embed(
+            title="Sheet Quota Exceeded",
+            description=f"User {owner_mention} has **{unused_count}** unused sheets.",
+            color=discord.Color.gold()
+        )
+        e.add_field(name="User", value=owner_mention, inline=True)
+        e.add_field(name="Total Unused", value=str(unused_count), inline=True)
+        e.add_field(name="Triggering Sheet", value=url, inline=False)
+        e.set_footer(text="Click the button below to review all of their unused sheets.")
+
+        view = QuotaAlertView(self, owner_id=int(owner_id))
+        await ch.send(embed=e, view=view)
 
     async def send_incident_message(self, guild: discord.Guild, incident_id: str, doc_id: str) -> None:
         cfg = await self.cfg_repo.get(guild.id)
@@ -610,6 +671,21 @@ class SheetWatchCog(commands.Cog):
             else:
                 fp = discord.File(io.BytesIO(d.encode("utf-8")), filename=f"{inc.get('doc_id','doc')}_{k}_diff.txt")
                 await ch.send(content=f"**{title}** (diff attached)", file=fp)
+
+    async def action_set_sheet_used(self, doc_id: str, *, is_used: bool, mod_user_id: int, interaction: discord.Interaction) -> None:
+        sheet = await self.repo.get_sheet(doc_id)
+        if not sheet:
+            await interaction.followup.send("Cannot find this sheet.", ephemeral=True)
+            return
+
+        await self.repo.set_sheet_used_status(doc_id, is_used=is_used)
+        await self.repo.add_audit(
+            interaction.guild.id,
+            doc_id,
+            sheet.get("owner_user_id"),
+            "set_sheet_used_status",
+            {"is_used": is_used, "by": str(mod_user_id)}
+        )
 
     # -----------------------------
     # Periodic loop (interval from config)

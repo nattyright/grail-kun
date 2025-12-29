@@ -101,5 +101,127 @@ class IncidentView(discord.ui.View):
             return
         await interaction.response.defer(ephemeral=True)
 
-        await self.cog.action_post_diffs(interaction.guild_id, self.incident_id)
+        await self.cog.action_post_diffs(interaction.guild.id, self.incident_id)
         await interaction.followup.send("Posted diffs to the mod channel.", ephemeral=True)
+
+
+class UserSheetReviewView(discord.ui.View):
+    def __init__(self, cog, *, owner_id: int, sheets: list[dict]):
+        super().__init__(timeout=3600)  # 1 hour timeout
+        self.cog = cog
+        self.owner_id = owner_id
+        self.sheets = sheets
+        self.initial_count = len(sheets)
+        self.current_index = 0
+
+    async def _guard(self, interaction: discord.Interaction) -> bool:
+        if not interaction.user.guild_permissions.manage_guild:
+            await interaction.response.send_message("You don’t have permission to do that.", ephemeral=True)
+            return False
+        return True
+
+    def _build_embed(self) -> discord.Embed:
+        if not self.sheets:
+            return discord.Embed(
+                title="Review Complete",
+                description="All unused sheets for this user have been reviewed.",
+                color=discord.Color.green()
+            )
+
+        sheet = self.sheets[self.current_index]
+        owner_mention = f"<@{self.owner_id}>"
+        
+        e = discord.Embed(
+            title=f"Reviewing Unused Sheets for {owner_mention}",
+            description=f"Sheet {self.current_index + 1} of {self.initial_count} (Remaining: {len(self.sheets)})",
+            color=discord.Color.blue()
+        )
+        e.add_field(name="Sheet URL", value=sheet.get("url", "(no url)"), inline=False)
+        e.set_footer(text=f"Doc ID: {sheet['_id']}")
+        return e
+
+    def _update_buttons(self):
+        if not self.sheets:
+            for item in self.children:
+                item.disabled = True
+            self.stop()
+            return
+
+        self.prev_sheet.disabled = self.current_index == 0
+        self.next_sheet.disabled = self.current_index >= len(self.sheets) - 1
+        
+    async def start(self, interaction: discord.Interaction):
+        self._update_buttons()
+        embed = self._build_embed()
+        await interaction.response.send_message(embed=embed, view=self, ephemeral=False)
+
+    async def _update_view(self, interaction: discord.Interaction):
+        self._update_buttons()
+        embed = self._build_embed()
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="Previous", style=discord.ButtonStyle.secondary, custom_id="prev_sheet")
+    async def prev_sheet(self, interaction: discord.Interaction, _):
+        if not await self._guard(interaction): return
+        if self.current_index > 0:
+            self.current_index -= 1
+        await self._update_view(interaction)
+
+    @discord.ui.button(label="Next", style=discord.ButtonStyle.secondary, custom_id="next_sheet")
+    async def next_sheet(self, interaction: discord.Interaction, _):
+        if not await self._guard(interaction): return
+        if self.current_index < len(self.sheets) - 1:
+            self.current_index += 1
+        await self._update_view(interaction)
+
+    @discord.ui.button(label="Set as Used", style=discord.ButtonStyle.success)
+    async def set_used(self, interaction: discord.Interaction, _):
+        if not await self._guard(interaction): return
+
+        sheet = self.sheets[self.current_index]
+        await self.cog.action_set_sheet_used(
+            doc_id=sheet["_id"],
+            is_used=True,
+            mod_user_id=interaction.user.id,
+            interaction=interaction
+        )
+
+        # Remove from list and update index
+        self.sheets.pop(self.current_index)
+        if self.current_index >= len(self.sheets) and self.sheets:
+            self.current_index = len(self.sheets) - 1
+
+        await self._update_view(interaction)
+
+    @discord.ui.button(label="Set as Unused", style=discord.ButtonStyle.danger)
+    async def set_unused(self, interaction: discord.Interaction, _):
+        if not await self._guard(interaction): return
+
+        sheet = self.sheets[self.current_index]
+        await self.cog.action_set_sheet_used(
+            doc_id=sheet["_id"],
+            is_used=False,
+            mod_user_id=interaction.user.id,
+            interaction=interaction
+        )
+        # This action doesn't remove it from the list, just updates it.
+        # We can refresh to show any potential change in the embed if we want.
+        await interaction.response.defer() # Acknowledge the click
+        await interaction.followup.send(f"Sheet marked as 'Unused'.", ephemeral=True)
+
+
+    @discord.ui.button(label="Close Session", style=discord.ButtonStyle.grey)
+    async def close_session(self, interaction: discord.Interaction, _):
+        if not await self._guard(interaction): return
+        
+        for item in self.children:
+            item.disabled = True
+        
+        embed = discord.Embed(
+            title="Session Closed",
+            description="This review session has been manually closed.",
+            color=discord.Color.default()
+        )
+        await interaction.response.edit_message(embed=embed, view=self)
+        self.stop()
+
