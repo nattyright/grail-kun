@@ -106,10 +106,10 @@ class IncidentView(discord.ui.View):
 
 
 class UserSheetReviewView(discord.ui.View):
-    def __init__(self, cog, *, owner_id: int, sheets: list[dict], mode: str = 'unused'):
+    def __init__(self, cog, *, owner: discord.User, sheets: list[dict], mode: str = 'unused'):
         super().__init__(timeout=3600)  # 1 hour timeout
         self.cog = cog
-        self.owner_id = owner_id
+        self.owner = owner
         self.sheets = sheets
         self.initial_count = len(sheets)
         self.current_index = 0
@@ -133,12 +133,11 @@ class UserSheetReviewView(discord.ui.View):
 
     def _build_embed(self) -> discord.Embed:
         sheet = self.sheets[self.current_index]
-        owner_mention = f"<@{self.owner_id}>"
         is_sheet_used = sheet.get('is_used', False)
         status_text = "Used" if is_sheet_used else "Unused"
         
         mode_text = "Unused" if self.mode == "unused" else "Used"
-        title = f"Reviewing {mode_text} Sheets for {owner_mention}"
+        title = f"Reviewing {mode_text} Sheets for {self.owner.display_name}"
 
         if self.mode == 'unused':
             current_count = sum(1 for s in self.sheets if not s.get('is_used', False))

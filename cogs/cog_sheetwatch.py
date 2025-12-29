@@ -426,13 +426,14 @@ class SheetWatchCog(commands.Cog):
         return e
 
     async def flag_sheet_for_review(self, guild: discord.Guild, sheet: dict, unused_count: int):
-        owner_id = sheet.get("owner_user_id")
+        owner_id = int(sheet.get("owner_user_id"))
+        owner = guild.get_member(owner_id) or await self.bot.fetch_user(owner_id)
 
         class QuotaAlertView(discord.ui.View):
-            def __init__(self, cog, owner_id: int):
+            def __init__(self, cog, owner: discord.User):
                 super().__init__(timeout=None)
                 self.cog = cog
-                self.owner_id = owner_id
+                self.owner = owner
 
             @discord.ui.button(label="Review All Unused Sheets", style=discord.ButtonStyle.primary)
             async def review_all(self, interaction: discord.Interaction, _):
@@ -442,7 +443,7 @@ class SheetWatchCog(commands.Cog):
                 
                 await interaction.response.defer()
 
-                sheets = await self.cog.repo.get_all_unused_sheets_for_user(interaction.guild_id, self.owner_id)
+                sheets = await self.cog.repo.get_all_unused_sheets_for_user(interaction.guild_id, self.owner.id)
                 if not sheets:
                     await interaction.followup.send("No unused sheets found for this user anymore.", ephemeral=True)
                     return
@@ -452,7 +453,7 @@ class SheetWatchCog(commands.Cog):
                     item.disabled = True
                 await interaction.message.edit(view=self)
 
-                review_view = UserSheetReviewView(self.cog, owner_id=self.owner_id, sheets=sheets)
+                review_view = UserSheetReviewView(self.cog, owner=self.owner, sheets=sheets, mode='unused')
                 
                 # Manually do what start() used to do
                 review_view._update_buttons()
@@ -468,7 +469,8 @@ class SheetWatchCog(commands.Cog):
         if not isinstance(ch, discord.TextChannel):
             return
 
-        owner_mention = f"<@{owner_id}>" if owner_id else "(unknown user)"
+        owner_mention = owner.mention if owner else f"<@{owner_id}>"
+        owner_display_name = owner.display_name if owner else f"ID: {owner_id}"
         url = sheet.get("url", "(no url stored)")
 
         e = discord.Embed(
@@ -476,12 +478,12 @@ class SheetWatchCog(commands.Cog):
             description=f"User {owner_mention} has **{unused_count}** unused sheets.",
             color=discord.Color.gold()
         )
-        e.add_field(name="User", value=owner_mention, inline=True)
+        e.add_field(name="User", value=owner_display_name, inline=True)
         e.add_field(name="Total Unused", value=str(unused_count), inline=True)
         e.add_field(name="Triggering Sheet", value=url, inline=False)
         e.set_footer(text="Click the button below to review all of their unused sheets.")
 
-        view = QuotaAlertView(self, owner_id=int(owner_id))
+        view = QuotaAlertView(self, owner=owner)
         await ch.send(embed=e, view=view)
 
     async def send_incident_message(self, guild: discord.Guild, incident_id: str, doc_id: str) -> None:
@@ -1006,7 +1008,7 @@ class SheetWatchCog(commands.Cog):
             await ctx.send(f"No unused sheets found for {user.mention}.")
             return
         
-        review_view = UserSheetReviewView(self, owner_id=user.id, sheets=sheets, mode='unused')
+        review_view = UserSheetReviewView(self, owner=user, sheets=sheets, mode='unused')
         
         review_view._update_buttons()
         embed = review_view._build_embed()
@@ -1021,7 +1023,7 @@ class SheetWatchCog(commands.Cog):
             await ctx.send(f"No used sheets found for {user.mention}.")
             return
         
-        review_view = UserSheetReviewView(self, owner_id=user.id, sheets=sheets, mode='used')
+        review_view = UserSheetReviewView(self, owner=user, sheets=sheets, mode='used')
         
         review_view._update_buttons()
         embed = review_view._build_embed()
