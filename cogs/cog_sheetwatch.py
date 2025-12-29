@@ -175,22 +175,62 @@ class SheetWatchCog(commands.Cog):
                     self.baseline_inflight.add(doc_id)
                     await self.baseline_queue.put(doc_id)
 
+    async def discover_from_submission_message(self, msg: discord.Message) -> None:
+        if not msg.guild or msg.author.bot:
+            return
+
+        doc_url = extract_doc_url(msg.content)
+        doc_id = extract_doc_id(msg.content)
+        owner_id = msg.author.id
+
+        if not doc_id or not doc_url:
+            return # No valid doc link found in the message content
+
+        was_inserted = await self.repo.upsert_sheet(
+            doc_id=doc_id,
+            guild_id=msg.guild.id,
+            owner_user_id=owner_id,
+            url=doc_url,
+            source_channel_id=msg.channel.id,
+            source_message_id=msg.id
+        )
+
+        sheet = await self.repo.get_sheet(doc_id)
+
+        # If a new sheet was added, check the user's quota
+        if was_inserted and sheet:
+            unused_count = await self.repo.count_unused_sheets_for_user(msg.guild.id, owner_id)
+            # The user requested "exceeded 3", so we flag when the 4th is added.
+            if unused_count > 3:
+                await self.flag_sheet_for_review(msg.guild, sheet, unused_count)
+
+        # Enqueue baseline creation if needed (per doc_id)
+        if sheet and not sheet.get("approved"):
+            # enqueue once (dedupe)
+            if doc_id not in self.baseline_inflight:
+                self.baseline_inflight.add(doc_id)
+                await self.baseline_queue.put(doc_id)
+
     # Listen for new messages
     @commands.Cog.listener()
     async def on_message(self, msg: discord.Message):
-        await self.discover_from_message(msg)
+        if not msg.guild or msg.author.bot or msg.webhook_id is not None:
+            return
+
+        cfg = await self.cfg_repo.get(msg.guild.id)
+        tracked_channels = {int(x) for x in cfg.get("tracked_channel_ids", [])}
+        submission_channel_id = cfg.get("submission_channel_id")
+
+        if msg.channel.id in tracked_channels:
+            await self.discover_from_message(msg)
+        elif submission_channel_id and msg.channel.id == int(submission_channel_id):
+            await self.discover_from_submission_message(msg)
 
     # Listen for updated messages
     @commands.Cog.listener()
     async def on_raw_message_edit(self, payload: RawMessageUpdateEvent):
         # Ignore DMs / no guild
         if payload.guild_id is None:
-            return
-
-        # Check tracked channel gate FIRST (cheap)
-        cfg = await self.cfg_repo.get(payload.guild_id)
-        tracked = {str(x) for x in cfg.get("tracked_channel_ids", [])}
-        if str(payload.channel_id) not in tracked:
             return
 
         # Fetch the full message (this gives you content + embeds reliably)
@@ -210,9 +250,17 @@ class SheetWatchCog(commands.Cog):
             return
         except discord.HTTPException:
             return
+        
+        # Check channel gate and route
+        cfg = await self.cfg_repo.get(payload.guild_id)
+        tracked_channels = {int(x) for x in cfg.get("tracked_channel_ids", [])}
+        submission_channel_id = cfg.get("submission_channel_id")
 
-        # Now run your normal discovery on the real message
-        await self.discover_from_message(msg)
+        if msg.channel.id in tracked_channels:
+            await self.discover_from_message(msg)
+        elif submission_channel_id and msg.channel.id == int(submission_channel_id):
+            await self.discover_from_submission_message(msg)
+        # Else: not a tracked or submission channel, do nothing.
 
 
     async def active_rescan(self, guild: discord.Guild) -> None:
@@ -906,6 +954,7 @@ class SheetWatchCog(commands.Cog):
             f"- Mod channel: {cfg.get('mod_alert_channel_id')}\n"
             f"- Mod roles: {', '.join(mod_role_mentions)}\n"
             f"- Tracked: {cfg.get('tracked_channel_ids')}\n"
+            f"- Submission channel: {cfg.get('submission_channel_id', 'Not Set')}\n"
             f"- Check interval (min): {cfg.get('check_interval_minutes')}"
         )
 
@@ -936,6 +985,11 @@ class SheetWatchCog(commands.Cog):
         await self.cfg_repo.set_mod_roles(ctx.guild.id, role_ids)
         await ctx.send("Moderator roles updated to:\n" + "\n".join(r.mention for r in roles))
 
+    @sheet_group.command(name="setsubmission")
+    @commands.has_permissions(manage_guild=True)
+    async def setsubmission(self, ctx: commands.Context, channel: discord.TextChannel):
+        await self.cfg_repo.set_submission_channel(ctx.guild.id, channel.id)
+        await ctx.send(f"Sheet submission channel set to {channel.mention}")
 
     @sheet_group.command(name="rescan")
     @is_mod_or_admin()

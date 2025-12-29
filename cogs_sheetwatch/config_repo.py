@@ -85,3 +85,12 @@ class GuildConfigRepo:
                 upsert=True
             )
         await asyncio.to_thread(_set)
+
+    async def set_submission_channel(self, guild_id: int, channel_id: int) -> None:
+        def _set():
+            self.col.update_one(
+                {"guild_id": str(guild_id)},
+                {"$set": {"submission_channel_id": str(channel_id)}},
+                upsert=True
+            )
+        await asyncio.to_thread(_set)
