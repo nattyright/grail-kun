@@ -127,9 +127,22 @@ class UserSheetReviewView(discord.ui.View):
             pass # Message was deleted
 
     async def _guard(self, interaction: discord.Interaction) -> bool:
-        if not interaction.user.guild_permissions.manage_guild:
-            await interaction.response.send_message("You don’t have permission to do that.", ephemeral=True)
-            return False
+        # Check #1: Admin permission
+        if interaction.user.guild_permissions.manage_guild:
+            pass  # Admin is always allowed
+        else:
+            # Check #2: Moderator role
+            cfg = await self.cog.cfg_repo.get(interaction.guild_id)
+            mod_role_ids = {int(r) for r in cfg.get("mod_role_ids", [])}
+
+            if not mod_role_ids:  # No roles configured, so only admins
+                await interaction.response.send_message("You don’t have permission to do that.", ephemeral=True)
+                return False
+
+            author_role_ids = {r.id for r in interaction.user.roles}
+            if mod_role_ids.isdisjoint(author_role_ids):  # User has none of the roles
+                await interaction.response.send_message("You don’t have permission to do that.", ephemeral=True)
+                return False
         return True
 
     def _build_embed(self) -> discord.Embed:
