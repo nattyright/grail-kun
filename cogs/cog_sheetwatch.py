@@ -268,6 +268,13 @@ class SheetWatchCog(commands.Cog):
             async for msg in ch.history(limit=limit):
                 await self.discover_from_message(msg)
 
+        submission_channel_id = cfg.get("submission_channel_id")
+        if submission_channel_id:
+            ch = guild.get_channel(int(submission_channel_id))
+            if isinstance(ch, discord.TextChannel):
+                async for msg in ch.history(limit=limit):
+                    await self.discover_from_submission_message(msg)
+
     # -----------------------------
     # Snapshot + compare
     # -----------------------------
