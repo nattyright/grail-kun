@@ -204,13 +204,6 @@ class SheetWatchCog(commands.Cog):
             if unused_count > 3:
                 await self.flag_sheet_for_review(msg.guild, sheet, unused_count)
 
-        # Enqueue baseline creation if needed (per doc_id)
-        if sheet and not sheet.get("approved"):
-            # enqueue once (dedupe)
-            if doc_id not in self.baseline_inflight:
-                self.baseline_inflight.add(doc_id)
-                await self.baseline_queue.put(doc_id)
-
     # Listen for new messages
     @commands.Cog.listener()
     async def on_message(self, msg: discord.Message):
