@@ -149,13 +149,13 @@ Existing documents are backfilled at read time with:
 Thread title format:
 
 ```text
-{Master OR Servant} | {character_name} | @{canonical_username} | {debut_label}
+{Master OR Servant} | {character_name} | @{canonical_username} | {footer_text}
 ```
 
 Examples:
 
 ```text
-Servant | Captain Ahab | @magnetm | ROTW
+Servant | Captain Ahab | @magnetm | Rest of the World | Event Details
 Master | Nannerl von Eltz | @inkown | Narssarsuk
 ```
 
@@ -164,8 +164,7 @@ Rules:
 - Masters use `Master`.
 - Servants use `Servant`. Servant class is already visible on the card.
 - `username` should be canonical plain text with an `@`.
-- `footer_text` is split at the first `|`.
-- `Rest of the World` becomes `ROTW`.
+- `footer_text` is shown in full.
 
 ## Starter Message Body
 
@@ -521,7 +520,6 @@ Verified in live Discord testing:
 
 Still unresolved:
 
-- Forum thumbnail behavior does not currently work as desired. The card image is still included inline in the starter message body instead of appearing only as the forum/gallery thumbnail.
 - PC/NPC tag sync should be retested after the latest `type` sync fix.
 
 ## Operational Notes
@@ -530,4 +528,4 @@ Still unresolved:
 - MongoDB operations are wrapped with `asyncio.to_thread`.
 - Rendering and faceclaim image work are also pushed off the event loop.
 - The bot needs permissions to create forum threads, attach files, manage/edit its own messages, apply tags, and delete card threads.
-- Suppressing inline attachment/gallery behavior may depend on Discord client/API behavior and should be confirmed in the live server.
+- The rendered card image remains visible as an inline attachment in the starter post and is also used by Discord forum/gallery views.
