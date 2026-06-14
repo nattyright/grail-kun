@@ -571,8 +571,10 @@ function buildManifest(name, layerNamesByRole) {
     canvas: { width: DESIGN_WIDTH, height: DESIGN_HEIGHT, ratio: "8:5" },
     config: `designs/${name}/config.json`,
     previews: {
-      master: `preview/${name}_master_preview.png`,
-      servant: `preview/${name}_servant_preview.png`
+      master: `designs/${name}/preview/01_master_preview.png`,
+      master_custom_background: `designs/${name}/preview/02_master_custom_background.png`,
+      servant_custom_background: `designs/${name}/preview/03_servant_custom_background.png`,
+      servant: `designs/${name}/preview/04_servant_preview.png`
     },
     layers: layerNamesByRole,
     fonts: state.fonts.filter((f) => f.file).map((f) => ({
@@ -604,9 +606,15 @@ async function downloadPackage() {
 
   files.push({ name: `designs/${name}/config.json`, data: stringBytes(controls.jsonOutput.value) });
 
-  for (const role of ["master", "servant"]) {
-    const blob = await previewBlobForRole(role);
-    files.push({ name: `preview/${name}_${role}_preview.png`, data: new Uint8Array(await blob.arrayBuffer()) });
+  const previewFiles = [
+    { path: `designs/${name}/preview/01_master_preview.png`, blob: await previewBlobForRole("master") },
+    { path: `designs/${name}/preview/02_master_custom_background.png`, blob: await customBackgroundPreviewBlob("master") },
+    { path: `designs/${name}/preview/03_servant_custom_background.png`, blob: await customBackgroundPreviewBlob("servant") },
+    { path: `designs/${name}/preview/04_servant_preview.png`, blob: await previewBlobForRole("servant") }
+  ];
+
+  for (const preview of previewFiles) {
+    files.push({ name: preview.path, data: new Uint8Array(await preview.blob.arrayBuffer()) });
   }
 
   for (const role of ["master", "servant"]) {
@@ -768,6 +776,31 @@ function previewBlobForRole(role) {
       resolve(blob);
     });
   });
+}
+
+function designSupportsCustomBackground(role) {
+  return state.layersByRole[role].some((layer) => layer.visible !== false && layer.customizable === "background");
+}
+
+function customBackgroundPreviewBlob(role) {
+  const temp = document.createElement("canvas");
+  temp.width = DESIGN_WIDTH;
+  temp.height = DESIGN_HEIGHT;
+  const tempCtx = temp.getContext("2d");
+  const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
+  const supportLabel = designSupportsCustomBackground(role) ? "Supports custom background" : "Does not support custom background";
+
+  tempCtx.fillStyle = "#101010";
+  tempCtx.fillRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
+  tempCtx.fillStyle = "#f4f4f4";
+  tempCtx.textAlign = "center";
+  tempCtx.textBaseline = "middle";
+  tempCtx.font = "700 92px Arial, sans-serif";
+  tempCtx.fillText(roleLabel, DESIGN_WIDTH / 2, DESIGN_HEIGHT / 2 - 72);
+  tempCtx.font = "700 70px Arial, sans-serif";
+  tempCtx.fillText(supportLabel, DESIGN_WIDTH / 2, DESIGN_HEIGHT / 2 + 44);
+
+  return new Promise((resolve) => temp.toBlob(resolve, "image/png"));
 }
 
 function layerBlob(layer) {
