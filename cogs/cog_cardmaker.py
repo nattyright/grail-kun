@@ -30,6 +30,7 @@ STATUS_DISPLAY = {"active": "Active", "hiatus": "Hiatus", "retired": "Retired"}
 TYPE_TAGS = {"pc", "npc"}
 PLAYER_STATUS_TAGS = {"looking for rp", "looking for master", "looking for servant"}
 RESOURCE_EMBED_COLOR = 5814783
+TAG_AUDIT_LOOKBACK_SECONDS = 15
 
 
 def is_admin_member(member: discord.abc.User) -> bool:
@@ -40,6 +41,31 @@ def is_admin_member(member: discord.abc.User) -> bool:
 def clean_optional(value: str | None) -> str | None:
     value = (value or "").strip()
     return value or None
+
+
+async def is_cardmaker_staff_member(cog: "CardmakerCog", member: discord.Member | discord.User) -> bool:
+    if is_admin_member(member):
+        return True
+    guild = getattr(member, "guild", None)
+    if not guild:
+        return False
+    cfg = await cog.repo.get_config(guild.id)
+    approved_role_ids = {str(role_id) for role_id in cfg.get("cardmaker_approved_role_ids") or []}
+    if not approved_role_ids:
+        return False
+    member_role_ids = {str(role.id) for role in getattr(member, "roles", [])}
+    return not approved_role_ids.isdisjoint(member_role_ids)
+
+
+async def cardmaker_staff_check(ctx: commands.Context) -> bool:
+    if not ctx.guild:
+        return False
+    if is_admin_member(ctx.author):
+        return True
+    cog = ctx.bot.get_cog("CardmakerCog")
+    if not isinstance(cog, CardmakerCog):
+        return False
+    return await is_cardmaker_staff_member(cog, ctx.author)
 
 
 class CardEditModal(discord.ui.Modal):
@@ -179,8 +205,8 @@ class CardPanelView(discord.ui.View):
 
     @discord.ui.button(label="Sync Tags", style=discord.ButtonStyle.danger, row=1)
     async def sync_tags(self, interaction: discord.Interaction, _: discord.ui.Button):
-        if not is_admin_member(interaction.user):
-            await interaction.response.send_message("Only admins can sync tags manually.", ephemeral=True)
+        if not await is_cardmaker_staff_member(self.cog, interaction.user):
+            await interaction.response.send_message("Only admins or approved cardmaker roles can sync tags manually.", ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True, thinking=True)
         if not isinstance(interaction.channel, discord.Thread):
@@ -191,15 +217,15 @@ class CardPanelView(discord.ui.View):
 
     @discord.ui.button(label="Admin Fields", style=discord.ButtonStyle.danger, row=1)
     async def admin_fields(self, interaction: discord.Interaction, _: discord.ui.Button):
-        if not is_admin_member(interaction.user):
-            await interaction.response.send_message("Only admins can edit admin fields.", ephemeral=True)
+        if not await is_cardmaker_staff_member(self.cog, interaction.user):
+            await interaction.response.send_message("Only admins or approved cardmaker roles can edit admin fields.", ephemeral=True)
             return
         await self._open_modal(interaction, "admin")
 
     @discord.ui.button(label="Delete Card", style=discord.ButtonStyle.danger, row=1)
     async def delete_card(self, interaction: discord.Interaction, _: discord.ui.Button):
-        if not is_admin_member(interaction.user):
-            await interaction.response.send_message("Only admins can delete cards.", ephemeral=True)
+        if not await is_cardmaker_staff_member(self.cog, interaction.user):
+            await interaction.response.send_message("Only admins or approved cardmaker roles can delete cards.", ephemeral=True)
             return
         await interaction.response.send_message(
             f"Delete `{self.character.get('name')}`? This moves the MongoDB document to `cardmaker_deleted` and deletes this thread.",
@@ -216,8 +242,8 @@ class DeleteCardConfirmView(discord.ui.View):
 
     @discord.ui.button(label="Confirm Delete", style=discord.ButtonStyle.danger)
     async def confirm(self, interaction: discord.Interaction, _: discord.ui.Button):
-        if not is_admin_member(interaction.user):
-            await interaction.response.send_message("Only admins can delete cards.", ephemeral=True)
+        if not await is_cardmaker_staff_member(self.cog, interaction.user):
+            await interaction.response.send_message("Only admins or approved cardmaker roles can delete cards.", ephemeral=True)
             return
         if not isinstance(interaction.channel, discord.Thread):
             await interaction.response.send_message("This only works in a card thread.", ephemeral=True)
@@ -263,6 +289,7 @@ class CardmakerCog(commands.Cog):
         self.repo = CardmakerRepo(bot.db)
         self.pending_faceclaim_uploads: dict[tuple[int, int], str] = {}
         self.pending_background_uploads: dict[tuple[int, int], str] = {}
+        self.pending_bot_tag_edits: set[int] = set()
 
     async def delete_message_quietly(self, message: discord.Message):
         try:
@@ -270,8 +297,8 @@ class CardmakerCog(commands.Cog):
         except (discord.Forbidden, discord.NotFound, discord.HTTPException):
             pass
 
-    def is_owner_or_admin(self, member: discord.Member | discord.User, character: dict[str, Any]) -> bool:
-        return is_admin_member(member) or str(getattr(member, "id", "")) == str(character.get("userid"))
+    async def is_owner_or_staff(self, member: discord.Member | discord.User, character: dict[str, Any]) -> bool:
+        return await is_cardmaker_staff_member(self, member) or str(getattr(member, "id", "")) == str(character.get("userid"))
 
     async def resolve_character_for_channel_user(
         self,
@@ -283,7 +310,7 @@ class CardmakerCog(commands.Cog):
         character = await self.repo.find_by_thread_id(channel.id)
         if not character:
             return None, "I don't have a card record linked to this thread."
-        if not self.is_owner_or_admin(user, character):
+        if not await self.is_owner_or_staff(user, character):
             return None, "You can only manage your own card here."
         return character, None
 
@@ -306,7 +333,7 @@ class CardmakerCog(commands.Cog):
         view = CardPanelView(
             self,
             character,
-            is_admin=is_admin_member(user),
+            is_admin=await is_cardmaker_staff_member(self, user),
             supports_custom_background=supports_custom_background,
         )
         return view, None
@@ -344,6 +371,67 @@ class CardmakerCog(commands.Cog):
 
     def normalized_tags(self, tags: list[discord.ForumTag] | tuple[discord.ForumTag, ...]) -> set[str]:
         return {tag.name.lower() for tag in tags}
+
+    async def thread_tag_actor(self, thread: discord.Thread) -> discord.abc.User | None:
+        guild = thread.guild
+        bot_member = guild.me
+        if not bot_member or not bot_member.guild_permissions.view_audit_log:
+            return None
+        await asyncio.sleep(1)
+        now = discord.utils.utcnow()
+        try:
+            async for entry in guild.audit_logs(limit=8, action=discord.AuditLogAction.thread_update):
+                if getattr(entry.target, "id", None) != thread.id or not entry.user:
+                    continue
+                created_at = getattr(entry, "created_at", None)
+                if created_at and abs((now - created_at).total_seconds()) > TAG_AUDIT_LOOKBACK_SECONDS:
+                    continue
+                return entry.user
+        except discord.HTTPException:
+            return None
+        return None
+
+    async def can_change_card_tags(self, guild: discord.Guild, actor: discord.abc.User | None, character: dict[str, Any]) -> bool:
+        if not actor:
+            return False
+        if self.bot.user and actor.id == self.bot.user.id:
+            return True
+        if str(actor.id) == str(character.get("userid")):
+            return True
+        member = guild.get_member(actor.id)
+        if not member:
+            try:
+                member = await guild.fetch_member(actor.id)
+            except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+                return False
+        return await is_cardmaker_staff_member(self, member)
+
+    async def revert_tag_change(
+        self,
+        thread: discord.Thread,
+        tags: list[discord.ForumTag] | tuple[discord.ForumTag, ...],
+        character: dict[str, Any],
+        actor: discord.abc.User | None,
+        reason: str,
+    ) -> None:
+        self.pending_bot_tag_edits.add(thread.id)
+        try:
+            await thread.edit(applied_tags=list(tags))
+        except discord.HTTPException as exc:
+            self.pending_bot_tag_edits.discard(thread.id)
+            await self.repo.add_audit(
+                character["_id"],
+                getattr(actor, "id", None),
+                "card_tag_revert_failed",
+                {"thread_id": str(thread.id), "reason": reason, "error": str(exc)},
+            )
+            return
+        await self.repo.add_audit(
+            character["_id"],
+            getattr(actor, "id", None),
+            "card_tag_change_reverted",
+            {"thread_id": str(thread.id), "reason": reason},
+        )
 
     def desired_tags(
         self,
@@ -552,7 +640,14 @@ class CardmakerCog(commands.Cog):
             if current_ids != desired_ids:
                 edit_kwargs["applied_tags"] = desired_tags
         if edit_kwargs:
-            await channel.edit(**edit_kwargs)
+            if "applied_tags" in edit_kwargs:
+                self.pending_bot_tag_edits.add(channel.id)
+            try:
+                await channel.edit(**edit_kwargs)
+            except Exception:
+                if "applied_tags" in edit_kwargs:
+                    self.pending_bot_tag_edits.discard(channel.id)
+                raise
 
         msg = await self.fetch_starter_message(channel, character)
         if msg:
@@ -602,7 +697,12 @@ class CardmakerCog(commands.Cog):
             current_ids = {tag.id for tag in thread.applied_tags}
             desired_ids = {tag.id for tag in desired_tags}
             if current_ids != desired_ids:
-                await thread.edit(applied_tags=desired_tags)
+                self.pending_bot_tag_edits.add(thread.id)
+                try:
+                    await thread.edit(applied_tags=desired_tags)
+                except Exception:
+                    self.pending_bot_tag_edits.discard(thread.id)
+                    raise
 
         found: str | None = None
         tag_names = self.normalized_tags(desired_tags if desired_tags is not None else thread.applied_tags)
@@ -641,6 +741,17 @@ class CardmakerCog(commands.Cog):
     @commands.Cog.listener()
     async def on_thread_update(self, before: discord.Thread, after: discord.Thread):
         if before.applied_tags != after.applied_tags:
+            if after.id in self.pending_bot_tag_edits:
+                self.pending_bot_tag_edits.discard(after.id)
+                return
+            character = await self.repo.find_by_thread_id(after.id)
+            if not character:
+                return
+            actor = await self.thread_tag_actor(after)
+            if not await self.can_change_card_tags(after.guild, actor, character):
+                reason = "actor_unknown" if actor is None else "actor_not_owner_or_admin"
+                await self.revert_tag_change(after, before.applied_tags, character, actor, reason)
+                return
             before_names = self.normalized_tags(before.applied_tags)
             after_names = self.normalized_tags(after.applied_tags)
             added_statuses = [name for name in ("active", "hiatus", "retired") if name in after_names and name not in before_names]
@@ -651,7 +762,7 @@ class CardmakerCog(commands.Cog):
             preferred_type = added_types[-1] if added_types else None
             await self.sync_status_from_thread(
                 after,
-                actor_id=0,
+                actor_id=actor.id if actor else None,
                 preferred_status=preferred_status,
                 preferred_looking=preferred_looking,
                 preferred_type=preferred_type,
@@ -681,7 +792,7 @@ class CardmakerCog(commands.Cog):
         if not character:
             await self.delete_message_quietly(message)
             return
-        if not self.is_owner_or_admin(message.author, character):
+        if not await self.is_owner_or_staff(message.author, character):
             await self.delete_message_quietly(message)
             return
         attachment = message.attachments[0]
@@ -727,19 +838,19 @@ class CardmakerCog(commands.Cog):
         )
 
     @card_group.command(name="fullchannel")
-    @commands.has_permissions(manage_guild=True)
+    @commands.check(cardmaker_staff_check)
     async def set_full_channel(self, ctx: commands.Context, channel: discord.ForumChannel):
         await self.repo.set_card_channels(ctx.guild.id, full_channel_id=channel.id)
         await ctx.send(f"Full-character card forum set to {channel.mention}.")
 
     @card_group.command(name="minorchannel")
-    @commands.has_permissions(manage_guild=True)
+    @commands.check(cardmaker_staff_check)
     async def set_minor_channel(self, ctx: commands.Context, channel: discord.ForumChannel):
         await self.repo.set_card_channels(ctx.guild.id, minor_channel_id=channel.id)
         await ctx.send(f"Minor-character card forum set to {channel.mention}.")
 
     @card_group.command(name="create")
-    @commands.has_permissions(manage_guild=True)
+    @commands.check(cardmaker_staff_check)
     async def create(self, ctx: commands.Context):
         fields = parse_create_template(ctx.message.content)
         if not fields:
@@ -818,7 +929,7 @@ class CardmakerCog(commands.Cog):
             return False
 
     @card_group.command(name="post")
-    @commands.has_permissions(manage_guild=True)
+    @commands.check(cardmaker_staff_check)
     async def post(self, ctx: commands.Context, *refs: str):
         if not refs:
             await ctx.send("Provide one or more character IDs, doc IDs, or doc URLs.")
@@ -846,7 +957,7 @@ class CardmakerCog(commands.Cog):
                 await ctx.send("Failures:\n" + "\n".join(f"- {failure}" for failure in failures[:10]))
 
     @card_group.command(name="postall")
-    @commands.has_permissions(manage_guild=True)
+    @commands.check(cardmaker_staff_check)
     async def postall(self, ctx: commands.Context):
         characters = await self.repo.list_postable(ctx.guild.id)
         if not characters:
@@ -881,10 +992,30 @@ class CardmakerCog(commands.Cog):
         await interaction.response.send_message("Card controls", view=view, ephemeral=True)
 
     @card_group.command(name="setdefaultdesign")
-    @commands.has_permissions(manage_guild=True)
+    @commands.check(cardmaker_staff_check)
     async def setdefaultdesign(self, ctx: commands.Context, design: str):
         await self.repo.set_default_design(ctx.guild.id, design)
         await ctx.send(f"Default card design set to `{design}`.")
+
+    @card_group.command(name="setapprovedrole")
+    @commands.has_permissions(manage_guild=True)
+    async def setapprovedrole(self, ctx: commands.Context, *roles: discord.Role):
+        if not roles:
+            await self.repo.set_approved_role_ids(ctx.guild.id, [])
+            await ctx.send("Cardmaker approved roles cleared. Only server admins can use cardmaker staff commands.")
+            return
+        role_ids = [role.id for role in roles]
+        await self.repo.set_approved_role_ids(ctx.guild.id, role_ids)
+        await ctx.send("Cardmaker approved roles updated to:\n" + "\n".join(role.mention for role in roles))
+
+    async def cog_command_error(self, ctx: commands.Context, error: commands.CommandError):
+        if isinstance(error, commands.MissingPermissions):
+            await ctx.send("Only server admins can use that setup command.")
+            return
+        if isinstance(error, commands.CheckFailure):
+            await ctx.send("Only server admins or approved cardmaker roles can use that command.")
+            return
+        raise error
 
 
 async def setup(bot: commands.Bot):

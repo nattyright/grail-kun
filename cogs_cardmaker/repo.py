@@ -379,6 +379,15 @@ class CardmakerRepo:
             )
         await asyncio.to_thread(_do)
 
+    async def set_approved_role_ids(self, guild_id: int, role_ids: list[int]) -> None:
+        def _do():
+            self.config.update_one(
+                {"guild_id": str(guild_id)},
+                {"$set": {"cardmaker_approved_role_ids": [str(role_id) for role_id in role_ids]}},
+                upsert=True,
+            )
+        await asyncio.to_thread(_do)
+
     async def get_config(self, guild_id: int) -> dict[str, Any]:
         def _do():
             cfg = self.config.find_one({"guild_id": str(guild_id)})

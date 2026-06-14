@@ -72,6 +72,7 @@ Relevant config keys:
 - `cardmaker_full_forum_channel_id`
 - `cardmaker_minor_forum_channel_id`
 - `cardmaker_default_design`
+- `cardmaker_approved_role_ids`
 
 ## Character Schema Notes
 
@@ -247,7 +248,8 @@ Because `Looking for...` implies active, a newly-added `Looking for...` tag also
 If a thread is tagged `Hiatus` or `Retired`, the bot drops `Active` and all `Looking for...` tags during sync.
 `PC` and `NPC` are mutually exclusive.
 Native PC/NPC tag changes sync into MongoDB `type`.
-Admins can also sync the current PC/NPC tag into MongoDB with the admin-only `Sync Tags` panel button.
+Native forum tag changes are accepted only when the bot can identify the actor as the character owner, an admin, an approved cardmaker role, or the bot itself. Other tag changes are reverted to the previous tag set.
+Cardmaker staff can also sync the current PC/NPC tag into MongoDB with the `Sync Tags` panel button.
 
 Status sync happens:
 
@@ -264,24 +266,30 @@ f.card
 
 ### `f.card fullchannel #forum-channel`
 
-Admin-only.
+Cardmaker staff only.
 Sets the full-character forum channel.
 The channel must be a Discord forum channel.
 
 ### `f.card minorchannel #forum-channel`
 
-Admin-only.
+Cardmaker staff only.
 Sets the minor-character forum channel.
 The channel must be a Discord forum channel.
 
 ### `f.card setdefaultdesign <design>`
 
-Admin-only.
+Cardmaker staff only.
 Sets the guild default card design used when creating new characters without `--design`.
+
+### `f.card setapprovedrole [@role ...]`
+
+Server-admin-only.
+Sets roles that may use cardmaker staff commands without needing server admin permissions.
+Run with no roles to clear the approved role list.
 
 ### `f.card create`
 
-Admin-only.
+Cardmaker staff only.
 With no fields, prints copy/paste create templates. With filled `--field:` lines, creates a MongoDB record from the templated command message, then posts it.
 
 Master and non-Servant template:
@@ -332,7 +340,7 @@ Notes:
 
 ### `f.card post <doc_id_or_url_or_character_id> [...]`
 
-Admin-only.
+Cardmaker staff only.
 Posts one or more existing MongoDB characters.
 
 Accepted references:
@@ -350,7 +358,7 @@ Before blocking a post, the bot verifies that the stored thread still exists in 
 
 ### `f.card postall`
 
-Admin-only.
+Cardmaker staff only.
 Posts all eligible active, unposted characters.
 Already-posted characters are skipped.
 
@@ -360,7 +368,7 @@ Thread-only.
 Opens card controls for the current card thread.
 
 Owners can use it for their own cards.
-Admins can use it for any card.
+Admins and approved cardmaker roles can use it for any card.
 
 The same controls are also available as the `/card edit` app command.
 `f.card panel` remains as a backwards-compatible alias.
@@ -376,7 +384,7 @@ Panel actions:
 - Delete Card
 
 `Sync Tags` manually reapplies the forum tag rules and updates MongoDB `admin.status` and `type` from the current thread tags. It is mostly a recovery/repair button, because normal status and PC/NPC tag edits are also synced automatically.
-`Sync Tags`, `Admin Fields`, and `Delete Card` are admin-only.
+`Sync Tags`, `Admin Fields`, and `Delete Card` are cardmaker-staff-only.
 
 ## Editing Rules
 
@@ -391,7 +399,7 @@ Owners may edit all normal card fields except:
 - `userid`
 - `safe_name`
 
-Admins may edit admin-controlled display/data fields.
+Admins and approved cardmaker roles may edit admin-controlled display/data fields.
 
 Admin fields currently include:
 
@@ -527,5 +535,5 @@ Still unresolved:
 - The cog is auto-loaded because it is named `cogs/cog_cardmaker.py`.
 - MongoDB operations are wrapped with `asyncio.to_thread`.
 - Rendering and faceclaim image work are also pushed off the event loop.
-- The bot needs permissions to create forum threads, attach files, manage/edit its own messages, apply tags, and delete card threads.
+- The bot needs permissions to create forum threads, attach files, manage/edit its own messages, apply tags, delete card threads, and view audit logs for owner/cardmaker-staff tag-change enforcement.
 - The rendered card image remains visible as an inline attachment in the starter post and is also used by Discord forum/gallery views.

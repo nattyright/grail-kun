@@ -85,7 +85,9 @@ You may see tags such as:
 - `Looking for Master`
 - `Looking for Servant`
 
-Changing status and PC/NPC tags updates the bot's stored card data.
+Only the character owner, admins, and approved cardmaker roles should change these tags.
+
+When the owner, an admin, or someone with an approved cardmaker role changes status and PC/NPC tags, the bot updates the stored card data. If someone else changes the tags, the bot changes them back.
 
 `Looking for RP`, `Looking for Master`, and `Looking for Servant` count as active status. If you choose `Hiatus` or `Retired`, the bot removes active-looking-for tags.
 
@@ -99,6 +101,7 @@ Contact an admin if you need to change:
 - the canonical username shown in the thread title
 - the debut/footer text
 - PC/NPC type if tag sync did not behave as expected
+- tags that keep changing back unexpectedly
 - a deleted or accidentally duplicated card
 - a card that should be moved to a different forum
 
@@ -179,9 +182,9 @@ The bot checks whether a stored thread still exists before reposting. If the old
 
 ### Opening Admin Controls
 
-Admins can use `f.card edit` or `/card edit` in any card thread.
+Admins and approved cardmaker roles can use `f.card edit` or `/card edit` in any card thread.
 
-Admins get the same normal edit buttons plus:
+Admins and approved cardmaker roles get the same normal edit buttons plus:
 
 - `Sync Tags`
 - `Admin Fields`
@@ -194,6 +197,8 @@ Use `Sync Tags` if forum tags and stored card data ever get out of step.
 Use `Delete Card` when a card should be removed. This archives the MongoDB record and deletes the Discord thread. If Discord thread deletion fails, the bot rolls back the database delete.
 
 ### Configuring Forums
+
+The following commands can be used by server admins and approved cardmaker roles.
 
 Set the full character forum:
 
@@ -212,6 +217,28 @@ Set the default design for newly created cards:
 ```text
 f.card setdefaultdesign default-rotw
 ```
+
+### Configuring Approved Cardmaker Roles
+
+Server admins can allow trusted non-admin roles to use cardmaker staff commands:
+
+```text
+f.card setapprovedrole @RoleName
+```
+
+You can set multiple roles at once:
+
+```text
+f.card setapprovedrole @RoleOne @RoleTwo
+```
+
+To clear all approved cardmaker roles:
+
+```text
+f.card setapprovedrole
+```
+
+Approved cardmaker roles can create, post, edit, sync, and delete cards, but only server admins can change the approved role list.
 
 ### Admin Do's And Don'ts
 
@@ -335,8 +362,9 @@ f.card postall
 f.card fullchannel #forum-channel
 f.card minorchannel #forum-channel
 f.card setdefaultdesign default-rotw
+f.card setapprovedrole @RoleName
 ```
 
 Best rule of thumb:
 
-Players can fix the card's visible details and images. Admins handle identity, ownership, forum placement, deletion, and new submissions.
+Players can fix the card's visible details and images. Admins and approved cardmaker roles handle identity, ownership, forum placement, deletion, and new submissions.
