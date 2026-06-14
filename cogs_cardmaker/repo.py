@@ -146,7 +146,7 @@ class CardmakerRepo:
         def _do():
             docs = list(self.characters.find({
                 "admin.status": {"$in": ["active", "Active", None]},
-            }).sort("name", 1))
+            }).sort("$natural", 1))
             results = []
             for doc in docs:
                 doc = self._backfill_doc(doc)

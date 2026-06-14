@@ -35,7 +35,7 @@ const UI_STRINGS = {
     avatarLabel: "Avatar preview",
     avatarHint: "Used only in the preview. It is not exported in the design package.",
     fontLabel: "Fonts",
-    fontHint: "Uploaded fonts become available in the text controls.",
+    fontHint: "Uploaded fonts become available in the text controls. Only .ttf fonts are accepted.",
     errorRatio: (name) => `Rejected ${name}: image ratio must match canvas.`,
     errorLoadFont: (name) => `Could not load font ${name}.`,
     statusAddedLayers: (count) => `Added ${count} layer${count === 1 ? "" : "s"}.`,
