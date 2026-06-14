@@ -383,7 +383,7 @@ class CardGenerator:
                 text = f"{prefix}{text}"
 
             font_config = fonts[cfg.get("font", "detail")]
-            anchor = cfg.get("anchor", "la")
+            anchor = cfg.get("anchor", "ls")
             x = cfg["x"]
             y = cfg["y"]
 
@@ -451,7 +451,7 @@ def default_output_filename(char_data, fallback_name):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Professional Character Card Generator")
-    parser.add_argument("-l", "--layout", default="card1", help="Design name, design folder, or config.json path")
+    parser.add_argument("-l", "--layout", default="default-rotw", help="Design name, design folder, or config.json path")
     parser.add_argument("-b", "--batch", action="store_true", help="Render characters from MongoDB")
     parser.add_argument("--mongo-uri", help="MongoDB connection string. Defaults to MONGODB_URI.")
     parser.add_argument("--database", default=Defaults.MONGO_DATABASE, help="MongoDB database name for --batch.")

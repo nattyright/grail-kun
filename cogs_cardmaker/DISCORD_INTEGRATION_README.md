@@ -13,6 +13,7 @@ Key behavior:
 - Each posted card is represented by one forum thread.
 - The rendered card image is attached to the starter message for gallery thumbnail use.
 - The starter message body stores structured Markdown character details.
+- The bot sends a second resource post immediately after the starter message with the Google Docs sheet URL and the faceclaim as an embed thumbnail.
 - Existing cards are edited from inside their own thread.
 - MongoDB remains the character data source of truth.
 - Discord forum tags are used for lightweight public filtering and status sync.
@@ -116,7 +117,20 @@ The `discord` block tracks publishing state:
 {
   "discord": {
     "starter_body": null,
-    "posts": []
+    "posts": [
+      {
+        "guild_id": "server_id",
+        "forum_channel_id": "forum_channel_id",
+        "thread_id": "thread_id",
+        "starter_message_id": "starter_message_id",
+        "resource_message_id": "resource_message_id",
+        "card_message_id": "starter_message_id",
+        "post_status": "posted",
+        "last_posted_at": "2026-06-14T00:00:00Z",
+        "last_synced_at": "2026-06-14T00:00:00Z",
+        "last_error": null
+      }
+    ]
   }
 }
 ```
@@ -191,6 +205,16 @@ All characters include:
 
 Links are stripped/suppressed to avoid embeds.
 
+## Resource Post
+
+After the starter message, the bot posts a second message in the same thread with a compact embed:
+
+- `Character Sheet` links to the character's `source_url`.
+- The current faceclaim is attached to that message and used as the embed thumbnail.
+- No Discord components are attached.
+
+On card updates, design changes, starter body edits, and faceclaim uploads, the bot refreshes this resource message. If an older posted card does not have a stored `resource_message_id`, the next update sends the missing resource message and stores the new message ID in `discord.posts`.
+
 ## Forum Tags
 
 The initial tag set is intentionally limited to 8 tags:
@@ -212,8 +236,8 @@ Player status:
 - `Looking for Master`
 - `Looking for Servant`
 
-Only status tags sync into MongoDB `admin.status`.
-Other tags are ignored for status purposes.
+Status tags sync into MongoDB `admin.status`.
+The `PC` and `NPC` tags sync into MongoDB `type`.
 
 `Looking for RP`, `Looking for Master`, and `Looking for Servant` imply active status and sync `admin.status` to `active`.
 `Active`, `Hiatus`, and `Retired` are mutually exclusive. When one is newly added, it becomes the status to keep and the other two are dropped.
@@ -223,8 +247,7 @@ Because `Looking for...` implies active, a newly-added `Looking for...` tag also
 `Looking for RP` can coexist with either `Looking for Master` or `Looking for Servant`.
 If a thread is tagged `Hiatus` or `Retired`, the bot drops `Active` and all `Looking for...` tags during sync.
 `PC` and `NPC` are mutually exclusive.
-Admin native PC/NPC tag changes sync into MongoDB `type` when the bot can identify the admin actor from the audit log.
-Non-admin native PC/NPC tag changes normalize back to the MongoDB value.
+Native PC/NPC tag changes sync into MongoDB `type`.
 Admins can also sync the current PC/NPC tag into MongoDB with the admin-only `Sync Tags` panel button.
 
 Status sync happens:
@@ -240,7 +263,7 @@ All commands are under:
 f.card
 ```
 
-### `f.card channel #forum-channel`
+### `f.card fullchannel #forum-channel`
 
 Admin-only.
 Sets the full-character forum channel.
@@ -276,7 +299,7 @@ f.card create
 --occupation: occupation
 --alignment: alignment
 --footer: origin_event_name | origin_event_details
---design: card2 OR other_design_name
+--design: default-rotw OR other_design_name
 ```
 
 Servant template:
@@ -293,7 +316,7 @@ f.card create
 --nationality: nationality
 --alignment: alignment
 --footer: origin_event_name | origin_event_details
---design: card2 OR other_design_name
+--design: default-rotw OR other_design_name
 ```
 
 Notes:
@@ -308,10 +331,10 @@ Notes:
 - Master-first, Master, and non-Servant roles use `--affiliation` and `--occupation`.
 - `--design` is optional if a guild default is set.
 
-### `f.card post <doc_id_or_url_or_character_id>`
+### `f.card post <doc_id_or_url_or_character_id> [...]`
 
 Admin-only.
-Posts an existing MongoDB character.
+Posts one or more existing MongoDB characters.
 
 Accepted references:
 
@@ -324,11 +347,7 @@ If multiple characters match a Google Doc ID, the bot asks for the exact charact
 
 If the character is already posted, the bot does not create a replacement thread.
 It links the existing thread instead.
-
-### `f.card postmany <ref> ...`
-
-Admin-only.
-Attempts to post multiple references.
+Before blocking a post, the bot verifies that the stored thread still exists in Discord. If Discord returns `NotFound`, the stale `discord.posts` entry is removed, an audit event is written, and the card is posted again so each character still has at most one live thread per server.
 
 ### `f.card postall`
 
@@ -336,13 +355,16 @@ Admin-only.
 Posts all eligible active, unposted characters.
 Already-posted characters are skipped.
 
-### `f.card panel`
+### `f.card edit`
 
 Thread-only.
 Opens card controls for the current card thread.
 
 Owners can use it for their own cards.
 Admins can use it for any card.
+
+The same controls are also available as the `/card edit` app command.
+`f.card panel` remains as a backwards-compatible alias.
 
 Panel actions:
 
@@ -354,18 +376,12 @@ Panel actions:
 - Admin Fields
 - Delete Card
 
-`Sync Tags` manually reapplies the forum tag rules and updates MongoDB `admin.status` from the current thread tags. It can also sync the current PC/NPC tag into MongoDB `type`. It is mostly a recovery/repair button, because normal status tag edits are also synced automatically.
+`Sync Tags` manually reapplies the forum tag rules and updates MongoDB `admin.status` and `type` from the current thread tags. It is mostly a recovery/repair button, because normal status and PC/NPC tag edits are also synced automatically.
 `Sync Tags`, `Admin Fields`, and `Delete Card` are admin-only.
-
-### `f.card setdesign <design>`
-
-Thread-only.
-Admin-only.
-Changes the current card's design and rerenders immediately.
 
 ## Editing Rules
 
-Existing-card edits are modal-driven from `f.card panel`.
+Existing-card edits are modal-driven from `f.card edit` or `/card edit`.
 
 Owners may edit all normal card fields except:
 
@@ -382,22 +398,34 @@ Admin fields currently include:
 
 - canonical username
 - footer text
-- Google Docs URL
 
-`scope`, `userid`, `safe_name`, and faceclaim filenames are treated as internal/automatic fields and are not directly edited in modals.
+Google Docs URL is intentionally not editable. It determines `source_doc_id` and the character `_id`; a new Google Docs submission should be created as a new character record instead of mutating an existing record's identity.
+
+`source_url`, `source_doc_id`, `scope`, `userid`, `safe_name`, and faceclaim filenames are treated as internal/automatic fields and are not directly edited in modals.
 
 There is no preview command. Updates are applied and rerendered immediately.
 There is no separate rerender panel button because edits, design changes, faceclaim uploads, and starter-post updates already rerender immediately.
 
 If a character changes scope between full and minor, treat that as a new public listing: retire the previous thread/card and create or post the character in the correct scope channel with the appropriate Google Doc URL.
 
-`Delete Card` moves the MongoDB record to `cardmaker_deleted` and deletes the Discord thread after an explicit admin confirmation.
+`Delete Card` moves the MongoDB record to `cardmaker_deleted` and deletes the Discord thread after an explicit admin confirmation. If Discord thread deletion fails, the MongoDB delete is rolled back by restoring the record to `cardmaker_characters` and removing the archived copy.
+Deletion metadata is stored under the archived document's `deletion` object:
+
+```json
+{
+  "deletion": {
+    "original_id": "{source_doc_id}:{safe_name}",
+    "at": "2026-06-14T00:00:00Z",
+    "by": "discord_user_id"
+  }
+}
+```
 
 ## Faceclaim Uploads
 
 Faceclaim upload currently uses a reliable fallback flow:
 
-1. Run `f.card panel` inside a card thread.
+1. Run `f.card edit` or `/card edit` inside a card thread.
 2. Click `Edit Faceclaim`.
 3. Send the next message in that thread with an image attachment.
 4. The bot validates, saves, updates MongoDB, rerenders, and deletes the upload message.
@@ -473,7 +501,7 @@ python -c "import discord; import cogs.cog_cardmaker as c; import cogs_cardmaker
 Renderer smoke test:
 
 ```powershell
-python -c "from cogs_cardmaker.card import CardGenerator; g=CardGenerator('card2'); img=g.render(dict(g.layout_cfg['character'])); print(img.size)"
+python -c "from cogs_cardmaker.card import CardGenerator; g=CardGenerator('default-rotw'); img=g.render(dict(g.layout_cfg['character'])); print(img.size)"
 ```
 
 Expected render size:
@@ -482,20 +510,24 @@ Expected render size:
 (1800, 1118)
 ```
 
-## Live Discord Testing Still Needed
+## Live Discord Testing
 
-The following need live server verification:
+Verified in live Discord testing:
 
-- Forum starter image behavior as gallery thumbnail without an inline image.
-- Forum tag application during post.
-- Manual tag-change status sync.
-- Starter message attachment replacement during rerender.
-- Faceclaim upload fallback flow.
+- Starter message attachment replacement during rerender works.
+- Starter message image/link removal works.
+- Faceclaim upload fallback flow works.
+- Status tag sync for `Active`, `Hiatus`, and `Retired` works.
+
+Still unresolved:
+
+- Forum thumbnail behavior does not currently work as desired. The card image is still included inline in the starter message body instead of appearing only as the forum/gallery thumbnail.
+- PC/NPC tag sync should be retested after the latest `type` sync fix.
 
 ## Operational Notes
 
 - The cog is auto-loaded because it is named `cogs/cog_cardmaker.py`.
 - MongoDB operations are wrapped with `asyncio.to_thread`.
 - Rendering and faceclaim image work are also pushed off the event loop.
-- The bot needs permissions to create forum threads, attach files, manage/edit its own messages, apply tags, delete card threads, and view audit logs for admin-only native PC/NPC tag syncing.
+- The bot needs permissions to create forum threads, attach files, manage/edit its own messages, apply tags, and delete card threads.
 - Suppressing inline attachment/gallery behavior may depend on Discord client/API behavior and should be confirmed in the live server.

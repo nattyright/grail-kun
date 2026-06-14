@@ -1,3 +1,4 @@
+/* --- Theme & Reset --- */
 :root {
   color-scheme: dark;
   --bg: #111214;
@@ -11,6 +12,7 @@
   --focus: #7db7ff;
 }
 
+/* --- Global Elements --- */
 * {
   box-sizing: border-box;
 }
@@ -82,12 +84,14 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
+/* --- Layout / App Shell --- */
 .app-shell {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 380px;
   min-height: 100vh;
 }
 
+/* --- Canvas Workspace --- */
 .workspace {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
@@ -149,12 +153,6 @@ p {
 .check-row input {
   width: auto;
   min-height: 0;
-}
-
-.nudge-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
 }
 
 .control-grid.compact {
@@ -229,6 +227,7 @@ p {
   min-height: 30px;
 }
 
+/* --- Control Panel --- */
 .panel {
   min-height: 100vh;
   border-left: 1px solid var(--line);
@@ -239,7 +238,7 @@ p {
 
 .tabs {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   border-bottom: 1px solid var(--line);
 }
 
@@ -274,6 +273,62 @@ p {
   display: grid;
   gap: 8px;
   margin-bottom: 18px;
+}
+
+.selected-layer-panel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #17191e;
+}
+
+.selected-layer-heading {
+  display: grid;
+  gap: 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.selected-layer-heading span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.selected-layer-heading strong {
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+
+.setting-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #121419;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.setting-row input {
+  width: auto;
+  min-height: 0;
+  margin-top: 3px;
+}
+
+.setting-row span {
+  display: grid;
+  gap: 3px;
+}
+
+.setting-row small {
+  color: var(--muted);
+  line-height: 1.35;
 }
 
 .row-label {
@@ -331,6 +386,18 @@ input[type="range"] {
   padding: 0;
 }
 
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 textarea {
   resize: vertical;
   padding: 8px;
@@ -359,6 +426,7 @@ select[size] {
   white-space: pre;
 }
 
+/* --- Media Queries --- */
 @media (max-width: 980px) {
   .app-shell {
     grid-template-columns: 1fr;

@@ -1,0 +1,221 @@
+{
+  "canvas": {
+    "width": 1600,
+    "height": 1000
+  },
+  "layers": {},
+  "fonts": {
+    "name": {
+      "path": "georgia.ttf",
+      "size": 126,
+      "color": [
+        255,
+        27,
+        22,
+        255
+      ]
+    },
+    "role": {
+      "path": "georgia.ttf",
+      "size": 70,
+      "color": [
+        245,
+        245,
+        245,
+        255
+      ]
+    },
+    "username": {
+      "path": "courier_new.ttf",
+      "size": 52,
+      "color": [
+        245,
+        245,
+        245,
+        255
+      ]
+    },
+    "detail": {
+      "path": "courier_new.ttf",
+      "size": 56,
+      "color": [
+        245,
+        245,
+        245,
+        255
+      ]
+    },
+    "footer": {
+      "path": "courier_new.ttf",
+      "size": 42,
+      "color": [
+        245,
+        245,
+        245,
+        255
+      ]
+    }
+  },
+  "avatar": {
+    "x": 470,
+    "y": 330,
+    "shape": "circle",
+    "size": 520
+  },
+  "templates": {
+    "master": {
+      "layers": {
+        "image_layers": [
+          {
+            "path": "master/01_background_sample_master_base_8x5.png",
+            "fit": "stretch",
+            "opacity": 1,
+            "id": "background",
+            "customizable": "background"
+          },
+          {
+            "path": "master/02_foreground_new_project.png",
+            "fit": "stretch",
+            "opacity": 0.38
+          }
+        ]
+      },
+      "text": {
+        "name": {
+          "x": 180,
+          "y": 220,
+          "font": "name",
+          "anchor": "ls",
+          "max_width": 720,
+          "line_height": 132
+        },
+        "role": {
+          "x": 430,
+          "y": 450,
+          "font": "role",
+          "anchor": "ms",
+          "max_width": 420,
+          "line_height": 78
+        },
+        "username": {
+          "x": 430,
+          "y": 525,
+          "font": "username",
+          "anchor": "ms",
+          "max_width": 420,
+          "line_height": 58
+        },
+        "affiliation": {
+          "x": 1380,
+          "y": 740,
+          "font": "detail",
+          "anchor": "rs",
+          "max_width": 560,
+          "line_height": 62
+        },
+        "occupation": {
+          "x": 1070,
+          "y": 210,
+          "font": "detail",
+          "anchor": "rs",
+          "max_width": 560,
+          "line_height": 62
+        },
+        "alignment": {
+          "x": 520,
+          "y": 870,
+          "font": "detail",
+          "anchor": "rs",
+          "max_width": 560,
+          "line_height": 62
+        },
+        "footer": {
+          "x": 800,
+          "y": 970,
+          "font": "footer",
+          "anchor": "mm",
+          "field": "footer_text",
+          "max_width": 900,
+          "line_height": 48
+        }
+      }
+    },
+    "servant": {
+      "layers": {
+        "image_layers": [
+          {
+            "path": "servant/01_background_sample_servant_base_8x5.png",
+            "fit": "stretch",
+            "opacity": 1,
+            "id": "background",
+            "customizable": "background"
+          },
+          {
+            "path": "servant/02_foreground_new_project.png",
+            "fit": "stretch",
+            "opacity": 0.38
+          }
+        ]
+      },
+      "text": {
+        "name": {
+          "x": 180,
+          "y": 220,
+          "font": "name",
+          "anchor": "ls",
+          "max_width": 720,
+          "line_height": 132
+        },
+        "role": {
+          "x": 430,
+          "y": 450,
+          "font": "role",
+          "anchor": "ms",
+          "max_width": 420,
+          "line_height": 78
+        },
+        "username": {
+          "x": 430,
+          "y": 525,
+          "font": "username",
+          "anchor": "ms",
+          "max_width": 420,
+          "line_height": 58
+        },
+        "class": {
+          "x": 1380,
+          "y": 735,
+          "font": "detail",
+          "anchor": "rs",
+          "max_width": 560,
+          "line_height": 62
+        },
+        "nationality": {
+          "x": 1380,
+          "y": 820,
+          "font": "detail",
+          "anchor": "rs",
+          "max_width": 560,
+          "line_height": 62
+        },
+        "alignment": {
+          "x": 1380,
+          "y": 905,
+          "font": "detail",
+          "anchor": "rs",
+          "max_width": 560,
+          "line_height": 62
+        },
+        "footer": {
+          "x": 800,
+          "y": 970,
+          "font": "footer",
+          "anchor": "mm",
+          "field": "footer_text",
+          "max_width": 900,
+          "line_height": 48
+        }
+      }
+    }
+  }
+}

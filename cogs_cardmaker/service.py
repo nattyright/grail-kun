@@ -61,7 +61,9 @@ def template_role_for(character: dict[str, Any]) -> str:
 
 
 def debut_label(footer_text: str | None) -> str:
-    first = (footer_text or "").split("|", 1)[0].strip()
+    # first = (footer_text or "").split("|", 1)[0].strip()
+    # we are posting the full footer now
+    first = (footer_text or "")
     if first.lower() == "rest of the world":
         return "ROTW"
     return first or "Unknown"
@@ -286,7 +288,7 @@ def create_template_text() -> str:
         "--nationality: nationality\n"
         "--alignment: alignment\n"
         "--footer: origin_event_name | origin_event_details\n"
-        "--design: card2 OR other_design_name\n"
+        "--design: default-rotw OR other_design_name\n"
         "\n"
         "Attach a faceclaim image to this same message if you want to set one."
     )
@@ -302,7 +304,7 @@ def create_template_text() -> str:
         "--occupation: occupation\n"
         "--alignment: alignment\n"
         "--footer: origin_event_name | origin_event_details\n"
-        "--design: card2 OR other_design_name\n"
+        "--design: default-rotw OR other_design_name\n"
         "\n"
         "Attach a faceclaim image to this same message if you want to set one."
     )

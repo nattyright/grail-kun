@@ -78,7 +78,7 @@ The existing cardmaker schema is a good base:
   "alignment": "Chaotic Good",
   "safe_name": "captain_ahab",
   "card": {
-    "default_design": "card2",
+    "default_design": "default-rotw",
     "last_rendered_at": null
   },
   "discord": {
@@ -233,18 +233,16 @@ f.card
 Possible commands:
 
 ```text
-f.card channel #forum-channel
+f.card fullchannel #forum-channel
 f.card minorchannel #forum-channel
-f.card post <doc_id_or_url_or_character_id>
-f.card postmany <doc_id_or_url_or_character_id> ...
+f.card post <doc_id_or_url_or_character_id> [...]
 f.card postall
 f.card create
 f.card panel
-f.card setdesign <design>
 f.card setdefaultdesign <design>
 ```
 
-### `f.card channel #forum-channel`
+### `f.card fullchannel #forum-channel`
 
 - Admin-only.
 - Stores the full-character card forum channel in guild config.
@@ -256,10 +254,10 @@ f.card setdefaultdesign <design>
 - Stores the minor-character card forum channel in guild config.
 - Rejects any channel that is not a forum channel.
 
-### `f.card post <doc_id_or_url_or_character_id>`
+### `f.card post <doc_id_or_url_or_character_id> [...]`
 
 - Admin-only.
-- Looks up an existing character in MongoDB.
+- Looks up one or more existing characters in MongoDB.
 - Accepts a Google Doc URL, Google Doc ID, or exact character ID.
 - Renders the selected character.
 - Creates a forum thread in the configured forum channel.
@@ -269,12 +267,6 @@ f.card setdefaultdesign <design>
 - Applies status, role, type, and player-status tags if possible.
 - Uses the thread title and starter body for class/debut/event details.
 - If the character is already posted, do not create another thread. Reply with an alert message that links the existing thread so the admin can go there and update it.
-
-### `f.card postmany <...>`
-
-- Admin-only.
-- Posts multiple selected characters.
-- Should report per-character success/failure.
 
 ### `f.card postall`
 
@@ -308,7 +300,7 @@ f.card create
 --nationality: nationality
 --alignment: alignment
 --footer: origin_event_name | origin_event_details
---design: card2 OR other_design_name
+--design: default-rotw OR other_design_name
 ```
 
 - The bot parses the template fields, derives `username` and `userid` from the Discord mention in `--player`, saves the record, renders the card, and posts it.
@@ -328,12 +320,6 @@ f.card create
 - Owners see only allowed controls.
 - `Sync Tags` manually reapplies the tag rules and updates MongoDB `admin.status` from the thread's current tags. It can also sync the current PC/NPC tag into MongoDB `type`.
 - `Sync Tags`, `Admin Fields`, and `Delete Card` are admin-only.
-
-### `f.card setdesign <design>`
-
-- Must be run inside a card thread.
-- Updates that character's design.
-- Rerenders immediately.
 
 ## User Commands
 
@@ -490,7 +476,7 @@ f.card create
 --nationality: nationality
 --alignment: alignment
 --footer: origin_event_name | origin_event_details
---design: card2 OR other_design_name
+--design: default-rotw OR other_design_name
 ```
 
 Pros:
@@ -540,11 +526,10 @@ Cons:
 
 - Add `cogs/cog_cardmaker.py`.
 - Implement:
-  - `f.card channel`
+  - `f.card fullchannel`
   - `f.card minorchannel`
   - `f.card post`
   - `f.card panel`
-  - `f.card setdesign`
 - Ensure forum channel validation.
 - Ensure thread-only update behavior.
 - Ensure owner/admin permission checks.
@@ -560,7 +545,7 @@ Cons:
 ### Phase 5: Batch Posting
 
 - Implement:
-  - `f.card postmany`
+  - multi-reference `f.card post`
   - `f.card postall`
 - Include result reporting.
 - Consider dry-run/confirmation.
@@ -583,7 +568,7 @@ If the debut label is `Rest of the World`, display it as `ROTW`.
 
 2. Owners can edit normal card fields except `username`, `footer_text`, `scope`, `type`, `userid`, and `safe_name`. Admins can edit admin-controlled display/data fields such as canonical username, footer text, and Google Docs URL. `type` is managed through PC/NPC forum tags. `scope`, `userid`, `safe_name`, and faceclaim filenames are internal/automatic.
 
-3. `f.card setdesign <design>` rerenders immediately.
+3. Design changes are handled from the card panel and rerender immediately.
 
 4. There is no preview command. Users can update on the fly and inspect the updated card afterward.
 

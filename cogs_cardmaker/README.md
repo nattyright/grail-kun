@@ -49,7 +49,7 @@ Run commands from `character-compendium` so relative asset paths resolve correct
 
 ```powershell
 $env:MONGODB_URI = "mongodb+srv://..."
-..\.venv\Scripts\python.exe card.py --batch --layout card2
+..\.venv\Scripts\python.exe card.py --batch --layout default-rotw
 ```
 
 `--batch` reads active characters from `grail-kun.cardmaker_characters`. Provide the connection string with `MONGODB_URI` or `--mongo-uri`.
@@ -66,7 +66,7 @@ MongoDB batch options:
 ### Render One Card From The Command Line
 
 ```powershell
-..\.venv\Scripts\python.exe card.py --layout card2 --name "Captain Ahab" --role Servant --username "@magnetm" --faceclaim captain_ahab.png --servant-class Lancer --servant-nationality American --alignment "Chaotic Good" --footer "Smoke Test" --output "captain_ahab_test.png"
+..\.venv\Scripts\python.exe card.py --layout default-rotw --name "Captain Ahab" --role Servant --username "@magnetm" --faceclaim captain_ahab.png --servant-class Lancer --servant-nationality American --alignment "Chaotic Good" --footer "Smoke Test" --output "captain_ahab_test.png"
 ```
 
 Command-line fields are useful for testing a card without touching MongoDB.
@@ -75,7 +75,7 @@ Command-line fields are useful for testing a card without touching MongoDB.
 
 | Flag | Short | Description |
 | --- | --- | --- |
-| `--layout` | `-l` | Design name, design folder, or `config.json` path. Defaults to `card1`. |
+| `--layout` | `-l` | Design name, design folder, or `config.json` path. Defaults to `default-rotw`. |
 | `--batch` | `-b` | Render characters from MongoDB. Requires `MONGODB_URI` or `--mongo-uri`. |
 | `--mongo-uri` | | MongoDB connection string. Defaults to `MONGODB_URI`. |
 | `--database` | | MongoDB database name for `--batch`. Defaults to `grail-kun`. |
@@ -120,19 +120,25 @@ The MongoDB source of truth is `grail-kun.cardmaker_characters`. `card.py` reads
   "alignment": "Chaotic Good",
   "safe_name": "captain_ahab",
   "card": {
-    "default_design": "card2",
+    "default_design": "default-rotw",
     "last_rendered_at": null
   },
   "discord": {
-    "guild_id": null,
-    "forum_channel_id": null,
-    "thread_id": null,
-    "starter_message_id": null,
-    "card_message_id": null,
-    "post_status": "not_posted",
-    "last_posted_at": null,
-    "last_synced_at": null,
-    "last_error": null
+    "starter_body": null,
+    "posts": [
+      {
+        "guild_id": "server_id",
+        "forum_channel_id": "forum_channel_id",
+        "thread_id": "thread_id",
+        "starter_message_id": "starter_message_id",
+        "resource_message_id": "resource_message_id",
+        "card_message_id": "starter_message_id",
+        "post_status": "posted",
+        "last_posted_at": "2026-06-14T00:00:00Z",
+        "last_synced_at": "2026-06-14T00:00:00Z",
+        "last_error": null
+      }
+    ]
   },
   "admin": {
     "status": "active",
@@ -200,7 +206,7 @@ Run the importer from inside `character-compendium`:
 ..\.venv\Scripts\python.exe import_mongo.py
 ```
 
-By default this reads `characters/_batch_import.json`, uses `card2` as `card.default_design`, and imports characters as `admin.status = "active"`.
+By default this reads `characters/_batch_import.json`, uses `default-rotw` as `card.default_design`, and imports characters as `admin.status = "active"`.
 
 Useful options:
 
@@ -210,14 +216,14 @@ Useful options:
 | `--mongo-uri` | MongoDB connection string. Defaults to `MONGODB_URI`. |
 | `--database` | Database name. Defaults to `grail-kun`. |
 | `--status` | Imported `admin.status`. Defaults to `active`. |
-| `--default-design` | Imported `card.default_design`. Defaults to `card2`. |
+| `--default-design` | Imported `card.default_design`. Defaults to `default-rotw`. |
 | `--dry-run` | Validate without writing to MongoDB. |
 | `--reorder-existing` | Rewrite existing documents in readable schema order without adding audit events. |
 
 Example:
 
 ```powershell
-..\.venv\Scripts\python.exe import_mongo.py --default-design card1 --status active
+..\.venv\Scripts\python.exe import_mongo.py --default-design default-rotw --status active
 ```
 
 ### Character IDs
@@ -369,7 +375,7 @@ Each entry in `templates.*.text` draws one piece of text. The key is used as the
           "x": 1600,
           "y": 759,
           "font": "detail",
-          "anchor": "ra"
+          "anchor": "rs"
         },
         "footer": {
           "field": "footer_text",
@@ -436,7 +442,7 @@ The renderer starts with the base layout, then merges in the selected role templ
 }
 ```
 
-Current `card1` and `card2` designs define complete `text` maps for both Master and Servant templates.
+Current `default-rotw` and `default-season6` designs define complete `text` maps for both Master and Servant templates.
 
 ## Dependencies
 

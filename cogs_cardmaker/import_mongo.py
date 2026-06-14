@@ -309,7 +309,7 @@ def parse_args():
     parser.add_argument("--mongo-uri", help="MongoDB connection string. Prefer MONGODB_URI for regular use.")
     parser.add_argument("--database", default=DEFAULT_DATABASE, help="MongoDB database name.")
     parser.add_argument("--status", default="active", help="Admin status assigned to imported characters.")
-    parser.add_argument("--default-design", default="card2", help="Default card design for imported characters.")
+    parser.add_argument("--default-design", default="default-rotw", help="Default card design for imported characters.")
     parser.add_argument("--reorder-existing", action="store_true", help="Replace unchanged existing documents to restore readable field order.")
     parser.add_argument("--dry-run", action="store_true", help="Validate and summarize without writing to MongoDB.")
     return parser.parse_args()

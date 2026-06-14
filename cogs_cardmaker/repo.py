@@ -48,9 +48,9 @@ class CardmakerRepo:
             self.characters.create_index("type")
             self.characters.create_index("admin.status")
             self.characters.create_index("discord.posts.guild_id")
-            self.deleted.create_index("deleted_at")
-            self.deleted.create_index("deleted_by")
-            self.deleted.create_index("original_id")
+            self.deleted.create_index("deletion.at")
+            self.deleted.create_index("deletion.by")
+            self.deleted.create_index("deletion.original_id")
             self.audit.create_index([("character_id", 1), ("created_at", -1)])
             self.audit.create_index([("actor_id", 1), ("created_at", -1)])
         await asyncio.to_thread(_do)
@@ -165,7 +165,7 @@ class CardmakerRepo:
             return self._backfill_doc(character)
         return await asyncio.to_thread(_do)
 
-    async def delete_character(self, character_id: str, actor_id: int | str | None, reason: str | None = None) -> dict[str, Any] | None:
+    async def delete_character(self, character_id: str, actor_id: int | str | None) -> dict[str, Any] | None:
         now = utc_now()
 
         def _do():
@@ -173,14 +173,29 @@ class CardmakerRepo:
             if not doc:
                 return None
             deleted_doc = dict(doc)
-            deleted_doc["original_id"] = character_id
-            deleted_doc["deleted_at"] = now
-            deleted_doc["deleted_by"] = str(actor_id) if actor_id is not None else None
-            deleted_doc["delete_reason"] = reason
+            deleted_doc["deletion"] = {
+                "original_id": character_id,
+                "at": now,
+                "by": str(actor_id) if actor_id is not None else None,
+            }
             self.deleted.replace_one({"_id": character_id}, deleted_doc, upsert=True)
             self.characters.delete_one({"_id": character_id})
-            self._insert_audit_sync(character_id, actor_id, "card_deleted", {"reason": reason, "old": doc})
+            self._insert_audit_sync(character_id, actor_id, "card_deleted", {"old": doc})
             return deleted_doc
+
+        return await asyncio.to_thread(_do)
+
+    async def restore_deleted_character(self, character_id: str, actor_id: int | str | None, kind: str, details: dict[str, Any]) -> dict[str, Any] | None:
+        def _do():
+            deleted_doc = self.deleted.find_one({"_id": character_id})
+            if not deleted_doc:
+                return None
+            restored_doc = dict(deleted_doc)
+            restored_doc.pop("deletion", None)
+            self.characters.replace_one({"_id": character_id}, restored_doc, upsert=True)
+            self.deleted.delete_one({"_id": character_id})
+            self._insert_audit_sync(character_id, actor_id, kind, details)
+            return restored_doc
 
         return await asyncio.to_thread(_do)
 
@@ -210,6 +225,7 @@ class CardmakerRepo:
         forum_channel_id: int,
         thread_id: int,
         starter_message_id: int | None,
+        resource_message_id: int | None,
         actor_id: int | str | None,
     ) -> None:
         now = utc_now()
@@ -218,6 +234,7 @@ class CardmakerRepo:
             "forum_channel_id": str(forum_channel_id),
             "thread_id": str(thread_id),
             "starter_message_id": str(starter_message_id) if starter_message_id else None,
+            "resource_message_id": str(resource_message_id) if resource_message_id else None,
             "card_message_id": str(starter_message_id) if starter_message_id else None,
             "post_status": "posted",
             "last_posted_at": now,
@@ -248,6 +265,91 @@ class CardmakerRepo:
             self._insert_audit_sync(character_id, actor_id, "card_posted", {"post": post_doc})
 
         await asyncio.to_thread(_do)
+
+    async def set_resource_message_id(
+        self,
+        character_id: str,
+        *,
+        thread_id: int,
+        resource_message_id: int,
+        actor_id: int | str | None,
+    ) -> None:
+        now = utc_now()
+
+        def _do():
+            doc = self.characters.find_one({"_id": character_id}) or {}
+            discord_block = dict(doc.get("discord") or {})
+            posts = list(discord_block.get("posts") or [])
+            changed = False
+            for post in posts:
+                if str(post.get("thread_id")) == str(thread_id):
+                    post["resource_message_id"] = str(resource_message_id)
+                    post["last_synced_at"] = now
+                    changed = True
+                    break
+            if not changed:
+                return
+            update = {
+                "discord.posts": posts,
+                "admin.updated_at": now,
+            }
+            if actor_id is not None:
+                update["admin.updated_by"] = str(actor_id)
+            self.characters.update_one({"_id": character_id}, {"$set": update})
+            self._insert_audit_sync(
+                character_id,
+                actor_id,
+                "card_resource_message_linked",
+                {"thread_id": str(thread_id), "resource_message_id": str(resource_message_id)},
+            )
+
+        await asyncio.to_thread(_do)
+
+    async def remove_post_for_guild(
+        self,
+        character_id: str,
+        *,
+        guild_id: int,
+        thread_id: str | int | None,
+        actor_id: int | str | None,
+    ) -> dict[str, Any] | None:
+        now = utc_now()
+
+        def _do():
+            doc = self.characters.find_one({"_id": character_id})
+            if not doc:
+                return None
+            discord_block = dict(doc.get("discord") or {})
+            old_posts = list(discord_block.get("posts") or [])
+            posts = [
+                post for post in old_posts
+                if not (
+                    str(post.get("guild_id")) == str(guild_id)
+                    and (thread_id is None or str(post.get("thread_id")) == str(thread_id))
+                )
+            ]
+            if len(posts) == len(old_posts):
+                return self._backfill_doc(doc)
+
+            update = {
+                "discord.posts": posts,
+                "admin.updated_at": now,
+            }
+            if actor_id is not None:
+                update["admin.updated_by"] = str(actor_id)
+            self.characters.update_one({"_id": character_id}, {"$set": update})
+            self._insert_audit_sync(
+                character_id,
+                actor_id,
+                "stale_card_thread_unlinked",
+                {"guild_id": str(guild_id), "thread_id": str(thread_id) if thread_id is not None else None},
+            )
+            updated = dict(doc)
+            discord_block["posts"] = posts
+            updated["discord"] = discord_block
+            return self._backfill_doc(updated)
+
+        return await asyncio.to_thread(_do)
 
     async def set_last_error(self, character_id: str, message: str, actor_id: int | str | None = None) -> None:
         await self.update_fields(
@@ -299,7 +401,7 @@ class CardmakerRepo:
         })
 
 
-def build_character_doc(fields: dict[str, str], *, player_user: Any, created_by: int | str, default_design: str = "card2") -> dict[str, Any]:
+def build_character_doc(fields: dict[str, str], *, player_user: Any, created_by: int | str, default_design: str = "default-rotw") -> dict[str, Any]:
     from cogs_cardmaker.service import extract_doc_id, safe_name_for
 
     if fields.get("faceclaim") or fields.get("avatar_path"):

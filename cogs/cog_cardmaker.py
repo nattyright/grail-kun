@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from typing import Any
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
+from cogs_cardmaker.card import Defaults
 from cogs_cardmaker.repo import CardmakerRepo, build_character_doc, utc_now
 from cogs_cardmaker.service import (
     STATUS_TAGS,
@@ -26,6 +29,7 @@ from cogs_cardmaker.service import (
 STATUS_DISPLAY = {"active": "Active", "hiatus": "Hiatus", "retired": "Retired"}
 TYPE_TAGS = {"pc", "npc"}
 PLAYER_STATUS_TAGS = {"looking for rp", "looking for master", "looking for servant"}
+RESOURCE_EMBED_COLOR = 5814783
 
 
 def is_admin_member(member: discord.abc.User) -> bool:
@@ -84,7 +88,6 @@ class CardEditModal(discord.ui.Modal):
         elif self.mode == "admin":
             self.add_text("username", "Canonical username (NOT display name)", c.get("username"), required=True, max_length=100)
             self.add_text("footer_text", "Footer text (Debut event)", c.get("footer_text"), max_length=200)
-            self.add_text("source_url", "Google docs URL", c.get("source_url"), max_length=300)
 
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True, thinking=True)
@@ -122,11 +125,13 @@ class CardEditModal(discord.ui.Modal):
 
 
 class CardPanelView(discord.ui.View):
-    def __init__(self, cog: "CardmakerCog", character: dict[str, Any], *, is_admin: bool):
+    def __init__(self, cog: "CardmakerCog", character: dict[str, Any], *, is_admin: bool, supports_custom_background: bool):
         super().__init__(timeout=300)
         self.cog = cog
         self.character = character
         self.is_admin = is_admin
+        if not supports_custom_background:
+            self.remove_item(self.upload_background)
         if not is_admin:
             self.remove_item(self.sync_tags)
             self.remove_item(self.admin_fields)
@@ -158,7 +163,7 @@ class CardPanelView(discord.ui.View):
             ephemeral=True,
         )
 
-    @discord.ui.button(label="Custom Background", style=discord.ButtonStyle.secondary, row=1)
+    @discord.ui.button(label="Custom Background", style=discord.ButtonStyle.success, row=1)
     async def upload_background(self, interaction: discord.Interaction, _: discord.ui.Button):
         if not interaction.channel:
             await interaction.response.send_message("This only works in a card thread.", ephemeral=True)
@@ -218,16 +223,32 @@ class DeleteCardConfirmView(discord.ui.View):
             await interaction.response.send_message("This only works in a card thread.", ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True, thinking=True)
-        deleted = await self.cog.repo.delete_character(self.character["_id"], interaction.user.id, "deleted_from_card_thread")
+        character_id = self.character["_id"]
+        try:
+            deleted = await self.cog.repo.delete_character(character_id, interaction.user.id)
+        except Exception as exc:
+            await interaction.followup.send(f"Delete failed before the thread was changed: `{exc}`", ephemeral=True)
+            return
         if not deleted:
             await interaction.followup.send("I couldn't find this card anymore.", ephemeral=True)
             return
-        await interaction.followup.send("Card moved to `cardmaker_deleted`. Deleting this thread now.", ephemeral=True)
+        await interaction.followup.send("Card archived. Deleting this thread now.", ephemeral=True)
         try:
             await interaction.channel.delete(reason=f"Card deleted by {interaction.user} ({interaction.user.id})")
+        except discord.NotFound:
+            pass
         except discord.HTTPException as exc:
-            await self.cog.repo.add_audit(self.character["_id"], interaction.user.id, "card_thread_delete_failed", {"error": str(exc)})
-            await interaction.followup.send(f"The MongoDB document was archived, but thread deletion failed: `{exc}`", ephemeral=True)
+            restored = await self.cog.repo.restore_deleted_character(
+                character_id,
+                interaction.user.id,
+                "card_delete_rolled_back",
+                {"error": str(exc)},
+            )
+            if restored:
+                await interaction.followup.send(f"Thread deletion failed, so the MongoDB delete was rolled back: `{exc}`", ephemeral=True)
+            else:
+                await self.cog.repo.add_audit(character_id, interaction.user.id, "card_delete_rollback_failed", {"error": str(exc)})
+                await interaction.followup.send(f"Thread deletion failed, and I could not restore the MongoDB record automatically: `{exc}`", ephemeral=True)
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
     async def cancel(self, interaction: discord.Interaction, _: discord.ui.Button):
@@ -235,6 +256,8 @@ class DeleteCardConfirmView(discord.ui.View):
 
 
 class CardmakerCog(commands.Cog):
+    card_app = app_commands.Group(name="card", description="Character card tools")
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.repo = CardmakerRepo(bot.db)
@@ -250,18 +273,43 @@ class CardmakerCog(commands.Cog):
     def is_owner_or_admin(self, member: discord.Member | discord.User, character: dict[str, Any]) -> bool:
         return is_admin_member(member) or str(getattr(member, "id", "")) == str(character.get("userid"))
 
-    async def resolve_character_in_thread(self, ctx: commands.Context) -> dict[str, Any] | None:
-        if not isinstance(ctx.channel, discord.Thread):
-            await ctx.send("Run this inside the card's forum thread.")
-            return None
-        character = await self.repo.find_by_thread_id(ctx.channel.id)
+    async def resolve_character_for_channel_user(
+        self,
+        channel: discord.abc.GuildChannel | discord.abc.PrivateChannel | discord.Thread | None,
+        user: discord.Member | discord.User,
+    ) -> tuple[dict[str, Any] | None, str | None]:
+        if not isinstance(channel, discord.Thread):
+            return None, "Run this inside the card's forum thread."
+        character = await self.repo.find_by_thread_id(channel.id)
         if not character:
-            await ctx.send("I don't have a card record linked to this thread.")
-            return None
-        if not self.is_owner_or_admin(ctx.author, character):
-            await ctx.send("You can only manage your own card here.")
+            return None, "I don't have a card record linked to this thread."
+        if not self.is_owner_or_admin(user, character):
+            return None, "You can only manage your own card here."
+        return character, None
+
+    async def resolve_character_in_thread(self, ctx: commands.Context) -> dict[str, Any] | None:
+        character, error = await self.resolve_character_for_channel_user(ctx.channel, ctx.author)
+        if error:
+            await ctx.send(error)
             return None
         return character
+
+    async def edit_controls_for(
+        self,
+        channel: discord.abc.GuildChannel | discord.abc.PrivateChannel | discord.Thread | None,
+        user: discord.Member | discord.User,
+    ) -> tuple[discord.ui.View | None, str | None]:
+        character, error = await self.resolve_character_for_channel_user(channel, user)
+        if error or not character:
+            return None, error
+        supports_custom_background = await design_supports_custom_background_async(character)
+        view = CardPanelView(
+            self,
+            character,
+            is_admin=is_admin_member(user),
+            supports_custom_background=supports_custom_background,
+        )
+        return view, None
 
     async def configured_forum(self, guild: discord.Guild, scope: str) -> discord.ForumChannel | None:
         cfg = await self.repo.get_config(guild.id)
@@ -279,6 +327,14 @@ class CardmakerCog(commands.Cog):
                 return str(post["thread_id"])
         return None
 
+    async def posted_thread_exists(self, guild: discord.Guild, thread_id: str | int) -> bool:
+        thread_id = int(thread_id)
+        cached = guild.get_thread(thread_id)
+        if cached:
+            return True
+        channel = await self.bot.fetch_channel(thread_id)
+        return isinstance(channel, discord.Thread) and channel.guild.id == guild.id
+
     def tag_by_name(self, forum: discord.ForumChannel, name: str) -> discord.ForumTag | None:
         lowered = name.lower()
         for tag in forum.available_tags:
@@ -288,23 +344,6 @@ class CardmakerCog(commands.Cog):
 
     def normalized_tags(self, tags: list[discord.ForumTag] | tuple[discord.ForumTag, ...]) -> set[str]:
         return {tag.name.lower() for tag in tags}
-
-    async def admin_thread_tag_actor_id(self, thread: discord.Thread) -> int | None:
-        guild = thread.guild
-        bot_member = guild.me
-        if not bot_member or not bot_member.guild_permissions.view_audit_log:
-            return None
-        await asyncio.sleep(1)
-        try:
-            async for entry in guild.audit_logs(limit=5, action=discord.AuditLogAction.thread_update):
-                if getattr(entry.target, "id", None) != thread.id or not entry.user:
-                    continue
-                member = guild.get_member(entry.user.id)
-                if member and is_admin_member(member):
-                    return member.id
-        except discord.HTTPException:
-            return None
-        return None
 
     def desired_tags(
         self,
@@ -378,6 +417,78 @@ class CardmakerCog(commands.Cog):
         data = await render_card_bytes_async(character, runtime_images=runtime_images)
         return discord.File(data, filename=image_filename(character))
 
+    def make_faceclaim_file(self, character: dict[str, Any]) -> discord.File | None:
+        avatar_path = str(character.get("avatar_path") or "").strip()
+        if not avatar_path:
+            return None
+        path = Path(avatar_path)
+        if not path.is_absolute():
+            path = Defaults.FACECLAIMS_DIR / path
+        if not path.exists() or not path.is_file():
+            return None
+        return discord.File(str(path), filename=path.name)
+
+    def make_resource_embed(self, character: dict[str, Any], attachment_filename: str | None = None) -> discord.Embed:
+        embed = discord.Embed(color=RESOURCE_EMBED_COLOR)
+        embed.add_field(
+            name="Character Sheet",
+            value=str(character.get("source_url") or "No character sheet URL on file."),
+            inline=False,
+        )
+        if attachment_filename:
+            embed.set_thumbnail(url=f"attachment://{attachment_filename}")
+        return embed
+
+    def resource_post_id_for_thread(self, character: dict[str, Any], thread_id: int) -> str | None:
+        discord_block = character.get("discord") or {}
+        for post in discord_block.get("posts") or []:
+            if str(post.get("thread_id")) == str(thread_id):
+                resource_id = post.get("resource_message_id")
+                return str(resource_id) if resource_id else None
+        return None
+
+    async def fetch_resource_message(self, thread: discord.Thread, character: dict[str, Any]) -> discord.Message | None:
+        resource_id = self.resource_post_id_for_thread(character, thread.id)
+        if not resource_id:
+            return None
+        try:
+            return await thread.fetch_message(int(resource_id))
+        except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+            pass
+        return None
+
+    async def send_resource_message(self, thread: discord.Thread, character: dict[str, Any]) -> discord.Message:
+        faceclaim_file = self.make_faceclaim_file(character)
+        embed = self.make_resource_embed(character, faceclaim_file.filename if faceclaim_file else None)
+        kwargs: dict[str, Any] = {
+            "embed": embed,
+            "allowed_mentions": discord.AllowedMentions.none(),
+        }
+        if faceclaim_file:
+            kwargs["file"] = faceclaim_file
+        return await thread.send(**kwargs)
+
+    async def refresh_resource_message(self, thread: discord.Thread, character: dict[str, Any], actor_id: int | str | None) -> None:
+        faceclaim_file = self.make_faceclaim_file(character)
+        embed = self.make_resource_embed(character, faceclaim_file.filename if faceclaim_file else None)
+        msg = await self.fetch_resource_message(thread, character)
+        if msg:
+            await msg.edit(embed=embed, attachments=[faceclaim_file] if faceclaim_file else [])
+            return
+        kwargs: dict[str, Any] = {
+            "embed": embed,
+            "allowed_mentions": discord.AllowedMentions.none(),
+        }
+        if faceclaim_file:
+            kwargs["file"] = faceclaim_file
+        msg = await thread.send(**kwargs)
+        await self.repo.set_resource_message_id(
+            character["_id"],
+            thread_id=thread.id,
+            resource_message_id=msg.id,
+            actor_id=actor_id,
+        )
+
     async def create_card_thread(self, forum: discord.ForumChannel, character: dict[str, Any], actor_id: int | str) -> discord.Thread:
         card_file = await self.make_card_file(character)
         result = await forum.create_thread(
@@ -390,12 +501,14 @@ class CardmakerCog(commands.Cog):
         )
         thread = getattr(result, "thread", result)
         message = getattr(result, "message", None)
+        resource_message = await self.send_resource_message(thread, character)
         await self.repo.mark_posted(
             character["_id"],
             guild_id=forum.guild.id,
             forum_channel_id=forum.id,
             thread_id=thread.id,
             starter_message_id=getattr(message, "id", None),
+            resource_message_id=resource_message.id,
             actor_id=actor_id,
         )
         return thread
@@ -450,6 +563,7 @@ class CardmakerCog(commands.Cog):
                 suppress=True,
                 allowed_mentions=discord.AllowedMentions(users=True, roles=False, everyone=False),
             )
+        await self.refresh_resource_message(channel, character, actor_id)
         await self.repo.update_fields(
             character["_id"],
             {
@@ -535,14 +649,13 @@ class CardmakerCog(commands.Cog):
             preferred_status = added_statuses[-1] if added_statuses else None
             preferred_looking = added_looking[-1] if added_looking else None
             preferred_type = added_types[-1] if added_types else None
-            type_actor_id = await self.admin_thread_tag_actor_id(after) if preferred_type else None
             await self.sync_status_from_thread(
                 after,
-                actor_id=type_actor_id or 0,
+                actor_id=0,
                 preferred_status=preferred_status,
                 preferred_looking=preferred_looking,
                 preferred_type=preferred_type,
-                allow_type_sync=type_actor_id is not None,
+                allow_type_sync=preferred_type is not None,
             )
 
     @commands.Cog.listener()
@@ -609,13 +722,13 @@ class CardmakerCog(commands.Cog):
     async def card_group(self, ctx: commands.Context):
         await ctx.send(
             "Commands: `f.card create`, `f.card post <id/url>`, "
-            "`f.card postmany <id/url> ...`, `f.card postall`, `f.card channel #forum`, "
-            "`f.card minorchannel #forum`, `f.card panel`, `f.card setdesign <design>`"
+            "`f.card post <id/url> ...`, `f.card postall`, `f.card fullchannel #forum`, "
+            "`f.card minorchannel #forum`, `f.card edit`"
         )
 
-    @card_group.command(name="channel")
+    @card_group.command(name="fullchannel")
     @commands.has_permissions(manage_guild=True)
-    async def set_channel(self, ctx: commands.Context, channel: discord.ForumChannel):
+    async def set_full_channel(self, ctx: commands.Context, channel: discord.ForumChannel):
         await self.repo.set_card_channels(ctx.guild.id, full_channel_id=channel.id)
         await ctx.send(f"Full-character card forum set to {channel.mention}.")
 
@@ -640,7 +753,7 @@ class CardmakerCog(commands.Cog):
         player = ctx.message.mentions[0]
         try:
             cfg = await self.repo.get_config(ctx.guild.id)
-            default_design = cfg.get("cardmaker_default_design") or "card2"
+            default_design = cfg.get("cardmaker_default_design") or "default-rotw"
             character = build_character_doc(fields, player_user=player, created_by=ctx.author.id, default_design=default_design)
             existing = await self.repo.get_character(character["_id"])
             if existing:
@@ -663,9 +776,34 @@ class CardmakerCog(commands.Cog):
             return False
         thread_id = self.posted_thread_for_guild(character, ctx.guild.id)
         if thread_id:
-            await self.repo.add_audit(character["_id"], ctx.author.id, "post_existing_thread_linked", {"thread_id": thread_id})
-            await ctx.send(f"`{character.get('name')}` is already posted: <#{thread_id}>")
-            return False
+            try:
+                exists = await self.posted_thread_exists(ctx.guild, thread_id)
+            except discord.NotFound:
+                exists = False
+            except (discord.Forbidden, discord.HTTPException) as exc:
+                await self.repo.add_audit(
+                    character["_id"],
+                    ctx.author.id,
+                    "post_existing_thread_verify_failed",
+                    {"thread_id": thread_id, "error": str(exc)},
+                )
+                await ctx.send(f"`{character.get('name')}` has a stored thread, but I couldn't verify it: `{exc}`")
+                return False
+
+            if exists:
+                await self.repo.add_audit(character["_id"], ctx.author.id, "post_existing_thread_linked", {"thread_id": thread_id})
+                await ctx.send(f"`{character.get('name')}` is already posted: <#{thread_id}>")
+                return False
+
+            updated = await self.repo.remove_post_for_guild(
+                character["_id"],
+                guild_id=ctx.guild.id,
+                thread_id=thread_id,
+                actor_id=ctx.author.id,
+            )
+            if updated:
+                character = updated
+            await ctx.send(f"`{character.get('name')}` had a stale deleted thread reference. Reposting now.")
         forum = await self.configured_forum(ctx.guild, str(character.get("scope") or "full").lower())
         if not forum:
             await ctx.send("Card forum is not configured for this character scope yet.")
@@ -681,34 +819,31 @@ class CardmakerCog(commands.Cog):
 
     @card_group.command(name="post")
     @commands.has_permissions(manage_guild=True)
-    async def post(self, ctx: commands.Context, *, ref: str):
-        character, matches = await self.repo.find_one_by_reference(ref)
-        if not character:
-            if matches:
-                lines = "\n".join(f"- `{m['_id']}`: {m.get('name')}" for m in matches[:10])
-                await ctx.send("That reference matches multiple characters. Use the exact character ID:\n" + lines)
-            else:
-                await ctx.send("No cardmaker character found for that reference.")
-            return
-        await self.post_character(ctx, character)
-
-    @card_group.command(name="postmany")
-    @commands.has_permissions(manage_guild=True)
-    async def postmany(self, ctx: commands.Context, *refs: str):
+    async def post(self, ctx: commands.Context, *refs: str):
         if not refs:
             await ctx.send("Provide one or more character IDs, doc IDs, or doc URLs.")
             return
+
         successes = 0
         failures: list[str] = []
         for ref in refs:
             character, matches = await self.repo.find_one_by_reference(ref)
             if not character:
-                failures.append(f"{ref}: not found or ambiguous")
+                if matches:
+                    lines = ", ".join(f"`{m['_id']}`" for m in matches[:10])
+                    failures.append(f"{ref}: ambiguous; use one of {lines}")
+                else:
+                    failures.append(f"{ref}: not found")
                 continue
             if await self.post_character(ctx, character):
                 successes += 1
             await asyncio.sleep(1)
-        await ctx.send(f"Postmany complete. Attempted: {len(refs)}. Found: {successes}. Failures: {len(failures)}")
+        if len(refs) == 1 and failures:
+            await ctx.send(f"Post failed: {failures[0]}")
+        elif len(refs) > 1:
+            await ctx.send(f"Post complete. Attempted: {len(refs)}. Posted: {successes}. Failures: {len(failures)}")
+            if failures:
+                await ctx.send("Failures:\n" + "\n".join(f"- {failure}" for failure in failures[:10]))
 
     @card_group.command(name="postall")
     @commands.has_permissions(manage_guild=True)
@@ -725,39 +860,25 @@ class CardmakerCog(commands.Cog):
             await asyncio.sleep(1)
         await ctx.send(f"Postall complete. Posted {posted} of {len(characters)} unposted candidate(s).")
 
-    @card_group.command(name="panel")
-    async def panel(self, ctx: commands.Context):
-        character = await self.resolve_character_in_thread(ctx)
-        if not character:
+    @card_group.command(name="edit", aliases=["panel"])
+    async def edit(self, ctx: commands.Context):
+        view, error = await self.edit_controls_for(ctx.channel, ctx.author)
+        if error or not view:
+            await ctx.send(error or "I couldn't open card controls.")
             return
-        view = CardPanelView(self, character, is_admin=is_admin_member(ctx.author))
         try:
             await ctx.message.delete()
         except (discord.Forbidden, discord.HTTPException):
             pass
         await ctx.send("Card controls", view=view, delete_after=300)
 
-    @card_group.command(name="setdesign")
-    async def setdesign(self, ctx: commands.Context, design: str):
-        character = await self.resolve_character_in_thread(ctx)
-        if not character:
+    @card_app.command(name="edit", description="Open editing controls for this card thread.")
+    async def edit_app(self, interaction: discord.Interaction):
+        view, error = await self.edit_controls_for(interaction.channel, interaction.user)
+        if error or not view:
+            await interaction.response.send_message(error or "I couldn't open card controls.", ephemeral=True)
             return
-        if not is_admin_member(ctx.author):
-            await ctx.send("Only admins can change the card design.")
-            return
-        updated = await self.repo.update_fields(
-            character["_id"],
-            {"card.default_design": design},
-            ctx.author.id,
-            "card_design_changed",
-        )
-        if updated:
-            await self.refresh_thread_from_character(ctx.channel, updated, actor_id=ctx.author.id)
-            try:
-                await ctx.message.delete()
-            except (discord.Forbidden, discord.HTTPException):
-                pass
-            await ctx.send(f"Design changed to `{design}` and card rerendered.", delete_after=20)
+        await interaction.response.send_message("Card controls", view=view, ephemeral=True)
 
     @card_group.command(name="setdefaultdesign")
     @commands.has_permissions(manage_guild=True)

@@ -8,20 +8,21 @@
 </head>
 <body>
   <main class="app-shell">
+    <!-- Main Canvas / Preview Area -->
     <section class="workspace" aria-label="Card preview workspace">
       <div class="topbar">
         <div>
-          <h1>Character Card Maker</h1>
-          <p>Design on a fixed 8:5 canvas. Drag text directly on the preview.</p>
+          <h1 data-ui="app.title">Character Card Maker</h1>
+          <p data-ui="app.tagline">Design on a dynamic canvas. Drag text directly on the preview.</p>
         </div>
         <div class="topbar-actions">
           <label class="zoom-control" for="previewZoom">
-            <span>Zoom <strong id="zoomValue">Fit</strong></span>
+            <span><span data-ui="app.zoomLabel">Zoom </span><strong id="zoomValue" data-ui="app.zoomFit">Fit</strong></span>
             <input id="previewZoom" type="range" min="10" max="200" step="5" value="100">
-            <button id="resetZoom" type="button">Fit</button>
+            <button id="resetZoom" type="button" data-ui="app.zoomFit">Fit</button>
           </label>
-          <button id="loadSample" type="button" title="Load sample base image">Sample</button>
-          <label class="file-button" for="packageImport">Import</label>
+          <button id="loadSample" type="button" data-ui="app.sampleButton">Sample</button>
+          <label class="file-button" for="packageImport" data-ui="app.packageImportLabel">Import</label>
           <input id="packageImport" class="visually-hidden" type="file" accept=".zip,application/zip">
         </div>
       </div>
@@ -31,62 +32,132 @@
       </div>
 
       <div class="status-row">
-        <span id="statusText">Ready.</span>
-        <span>Canvas: 1600 x 1000</span>
+        <span id="statusText" data-ui="app.statusReady">Ready.</span>
+        <span id="canvasSizeLabel"><span data-ui="app.canvasSizePrefix">Canvas: </span>1600 x 1000</span>
       </div>
     </section>
 
     <aside class="panel" aria-label="Design controls">
       <div class="tabs" role="tablist" aria-label="Control sections">
-        <button class="tab active" type="button" data-tab="assets">Assets</button>
-        <button class="tab" type="button" data-tab="text">Text</button>
-        <button class="tab" type="button" data-tab="export">Export</button>
+        <button class="tab active" type="button" data-tab="assets" data-ui="tabs.assets">Assets</button>
+        <button class="tab" type="button" data-tab="layers" data-ui="tabs.layers">Layers</button>
+        <button class="tab" type="button" data-tab="avatar" data-ui="tabs.avatar">Avatar</button>
+        <button class="tab" type="button" data-tab="text" data-ui="tabs.text">Text</button>
+        <button class="tab" type="button" data-tab="export" data-ui="tabs.export">Export</button>
       </div>
 
+      <!-- Tab 1: Assets (Uploads) -->
       <section class="tab-panel active" id="tab-assets">
         <div class="control-group">
-          <label for="assetRoleMode">Asset role</label>
+          <label for="assetRoleMode" data-ui="assets.roleLabel">Asset role</label>
           <select id="assetRoleMode">
             <option value="master">Master</option>
             <option value="servant">Servant</option>
           </select>
-          <p class="hint">Each role has its own image layer stack.</p>
+          <p class="hint" data-ui="assets.roleHint">Each role has its own image layer stack.</p>
         </div>
 
         <div class="control-group">
-          <label for="baseUpload">Base images</label>
+          <label for="baseUpload" data-ui="assets.baseLabel">Base images</label>
           <input id="baseUpload" type="file" accept="image/*" multiple>
-          <p class="hint">Only 8:5 images are accepted.</p>
+          <p class="hint" data-ui="assets.baseHint">Only base images matching the canvas ratio are accepted.</p>
         </div>
 
         <div class="control-group">
-          <label for="fontUpload">Fonts</label>
+          <label for="avatarUpload" data-ui="assets.avatarLabel">Avatar preview</label>
+          <input id="avatarUpload" type="file" accept="image/*">
+          <p class="hint" data-ui="assets.avatarHint">Used only in the local preview; it is not exported in the design package.</p>
+        </div>
+
+        <div class="control-group">
+          <label for="fontUpload" data-ui="assets.fontLabel">Fonts</label>
           <input id="fontUpload" type="file" accept=".ttf,.otf,.woff,.woff2" multiple>
-          <p class="hint">Uploaded fonts become available in the text controls.</p>
+          <p class="hint" data-ui="assets.fontHint">Uploaded fonts become available in the text controls.</p>
+        </div>
+      </section>
+
+      <!-- Tab 2: Layers (Ordering & Visibility) -->
+      <section class="tab-panel" id="tab-layers">
+        <div class="control-group">
+          <label for="layerRoleMode" data-ui="layers.roleLabel">Layer role</label>
+          <select id="layerRoleMode">
+            <option value="master">Master</option>
+            <option value="servant">Servant</option>
+          </select>
         </div>
 
         <div class="control-group">
           <div class="row-label">
-            <label>Image layers</label>
-            <button id="removeLayer" type="button" title="Remove selected image layer">Remove</button>
+            <label data-ui="layers.listLabel">Image layers</label>
+            <span class="badge" data-ui="layers.listBadge">Selected layer</span>
           </div>
           <select id="layerList" size="6" aria-label="Image layers"></select>
-          <div class="button-row">
-            <button id="moveLayerUp" type="button">Move Up</button>
-            <button id="moveLayerDown" type="button">Move Down</button>
+        </div>
+
+        <div class="selected-layer-panel">
+          <div class="selected-layer-heading">
+            <span data-ui="layers.selectedHeading">Selected image layer</span>
+            <strong id="selectedLayerName" data-ui="layers.noSelection">No layer selected</strong>
           </div>
-          <label class="check-row">
-            <input id="layerVisible" type="checkbox" checked>
-            <span>Visible in preview and export</span>
-          </label>
-          <label for="layerOpacity">Opacity</label>
+          <div class="button-row">
+            <button id="moveLayerUp" type="button" data-ui="layers.moveUp">Move Up</button>
+            <button id="moveLayerDown" type="button" data-ui="layers.moveDown">Move Down</button>
+          </div>
+          <label for="layerOpacity" data-ui="layers.opacityLabel">Opacity</label>
           <input id="layerOpacity" type="range" min="0" max="100" value="100">
+
+          <label class="setting-row">
+            <input id="layerVisible" type="checkbox" checked>
+            <span>
+              <strong data-ui="layers.visibleLabel">Visible in preview and export</strong>
+              <small data-ui="layers.visibleHint">When off, the layer stays in the editor but is omitted from exported config and package files.</small>
+            </span>
+          </label>
+          <label class="setting-row">
+            <input id="layerCustomBackground" type="checkbox">
+            <span>
+              <strong data-ui="layers.customBgLabel">Custom background slot</strong>
+              <small data-ui="layers.customBgHint">Allows the Discord bot to replace this selected layer for a one-time custom-background render.</small>
+            </span>
+          </label>
+          <button id="removeLayer" type="button" title="Remove selected image layer" data-ui="layers.removeLayer">Remove Selected Layer</button>
         </div>
       </section>
 
+      <!-- Tab 3: Avatar (Position & Shape) -->
+      <section class="tab-panel" id="tab-avatar">
+        <div class="control-group">
+          <div class="row-label">
+            <label data-ui="avatar.heading">Avatar export</label>
+            <span class="badge" data-ui="avatar.badge">Preview + config</span>
+          </div>
+          <div class="control-grid compact">
+            <label for="avatarShape" data-ui="avatar.shape">Shape</label>
+            <select id="avatarShape">
+              <option value="circle">Circle</option>
+              <option value="square">Square</option>
+              <option value="rectangle">Rectangle</option>
+              <option value="diamond">Diamond</option>
+              <option value="oval">Oval</option>
+              <option value="rounded_rectangle">Rounded rectangle</option>
+            </select>
+            <label for="avatarX" data-ui="avatar.x">X</label>
+            <input id="avatarX" type="number" min="0" max="4000" value="1010">
+            <label for="avatarY" data-ui="avatar.y">Y</label>
+            <input id="avatarY" type="number" min="0" max="4000" value="70">
+            <label id="avatarWidthLabel" for="avatarWidth" data-ui="avatar.width">Width</label>
+            <input id="avatarWidth" type="number" min="1" max="4000" value="520">
+            <label id="avatarHeightLabel" for="avatarHeight" data-ui="avatar.height">Height</label>
+            <input id="avatarHeight" type="number" min="1" max="4000" value="520">
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Tab 4: Text (Content & Styling) -->
       <section class="tab-panel" id="tab-text">
         <div class="control-group">
-          <label for="roleMode">Preview role</label>
+          <label for="roleMode" data-ui="text.roleLabel">Preview role</label>
           <select id="roleMode">
             <option value="master">Master</option>
             <option value="servant">Servant</option>
@@ -95,33 +166,33 @@
 
         <div class="control-group">
           <div class="row-label">
-            <label for="textList">Text elements</label>
-            <span class="badge">Fixed fields</span>
+            <label for="textList" data-ui="text.listLabel">Text elements</label>
+            <span class="badge" data-ui="text.listBadge">Fixed fields</span>
           </div>
           <select id="textList" size="7" aria-label="Text elements"></select>
         </div>
 
         <div class="control-grid">
-          <label for="fieldName">Field</label>
+          <label for="fieldName" data-ui="text.field">Field</label>
           <input id="fieldName" type="text" autocomplete="off" readonly>
 
-          <label for="textValue">Text</label>
+          <label for="textValue" data-ui="text.value">Text</label>
           <textarea id="textValue" rows="3"></textarea>
 
-          <label for="fontFamily">Font</label>
+          <label for="fontFamily" data-ui="text.font">Font</label>
           <select id="fontFamily"></select>
 
-          <label for="fontSize">Size</label>
+          <label for="fontSize" data-ui="text.size">Size</label>
           <input id="fontSize" type="number" min="8" max="240" value="60">
 
-          <label for="fontColor">Color</label>
+          <label for="fontColor" data-ui="text.color">Color</label>
           <input id="fontColor" type="color" value="#f5f5f5">
 
-          <label for="anchor">Anchor</label>
+          <label for="anchor" data-ui="text.anchor">Anchor</label>
           <select id="anchor">
-            <option value="la">Left</option>
-            <option value="ma">Center</option>
-            <option value="ra">Right</option>
+            <option value="ls">Left</option>
+            <option value="ms">Center</option>
+            <option value="rs">Right</option>
             <option value="lt">Top left</option>
             <option value="mt">Top center</option>
             <option value="rt">Top right</option>
@@ -130,66 +201,56 @@
             <option value="rm">Middle right</option>
           </select>
 
-          <label for="textX">X</label>
-          <input id="textX" type="number" min="0" max="1600">
+          <label for="textX" data-ui="text.x">X</label>
+          <input id="textX" type="number" min="0" max="4000">
 
-          <label for="textY">Y</label>
-          <input id="textY" type="number" min="0" max="1000">
+          <label for="textY" data-ui="text.y">Y</label>
+          <input id="textY" type="number" min="0" max="4000">
 
-          <label for="maxWidth">Max width</label>
-          <input id="maxWidth" type="number" min="0" max="1600">
+          <label for="maxWidth" data-ui="text.maxWidth">Max width</label>
+          <input id="maxWidth" type="number" min="0" max="4000">
 
-          <label for="lineHeight">Line height</label>
+          <label for="lineHeight" data-ui="text.lineHeight">Line height</label>
           <input id="lineHeight" type="number" min="8" max="260">
         </div>
 
         <div class="control-group">
-          <div class="row-label">
-            <label>Nudge</label>
-            <span class="badge">Position</span>
-          </div>
-          <div class="nudge-grid">
-            <span></span>
-            <button class="nudge-button" type="button" data-dx="0" data-dy="-1">Up</button>
-            <span></span>
-            <button class="nudge-button" type="button" data-dx="-1" data-dy="0">Left</button>
-            <button class="nudge-button" type="button" data-dx="0" data-dy="1">Down</button>
-            <button class="nudge-button" type="button" data-dx="1" data-dy="0">Right</button>
-          </div>
           <label class="check-row">
             <input id="snapEnabled" type="checkbox" checked>
-            <span>Snap to grid</span>
+            <span data-ui="text.snapLabel">Snap dragged positions to grid</span>
           </label>
           <div class="control-grid compact">
-            <label for="gridSize">Grid size</label>
-            <input id="gridSize" type="number" min="1" max="200" value="10">
-            <label for="nudgeStep">Nudge step</label>
-            <input id="nudgeStep" type="number" min="1" max="200" value="10">
+            <label for="gridSize" data-ui="text.gridSize">Grid size</label>
+            <input id="gridSize" type="number" min="1" max="200" value="30">
           </div>
         </div>
       </section>
 
+      <!-- Tab 5: Export (JSON & Packages) -->
       <section class="tab-panel" id="tab-export">
         <div class="control-group">
-          <label for="layoutName">Design name</label>
+          <label for="layoutName" data-ui="export.designName">Design name</label>
           <input id="layoutName" type="text" value="custom_card">
         </div>
         <div class="control-group">
           <div class="export-actions">
-            <button id="downloadPng" type="button">Download Preview PNG</button>
-            <button id="downloadPackage" type="button">Download Design Package</button>
-            <button id="copyJson" type="button">Copy Config JSON</button>
+            <button id="downloadPng" type="button" data-ui="export.downloadPng">Download Preview PNG</button>
+            <button id="downloadPackage" type="button" data-ui="export.downloadPackage">Download Design Package</button>
           </div>
-          <p class="hint">Exports design config JSON, ordered image layers, uploaded fonts, and preview PNG.</p>
+          <p class="hint" data-ui="export.hint">Exports design config JSON, ordered image layers, uploaded fonts, and preview PNG.</p>
         </div>
         <div class="control-group">
-          <label for="jsonOutput">Design config JSON</label>
+          <label for="jsonOutput" data-ui="export.jsonLabel">Design config JSON</label>
           <textarea id="jsonOutput" rows="18" spellcheck="false"></textarea>
         </div>
       </section>
     </aside>
   </main>
 
-  <script src="app.js"></script>
+  <script src="js/strings.js"></script>
+  <script src="js/constants.js"></script>
+  <script src="js/zip-utils.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
