@@ -12,6 +12,8 @@ A Python/Pillow card generator for the Starry Night character compendium. It ren
 - Treats special roles such as `Human` and `Homunculus` as Master templates.
 - For mixed roles, uses whichever role appears first, such as `Master / Servant` or `Servant / Master`.
 - Skips the avatar layer when an avatar path is blank or unresolved, leaving the base card art visible.
+- Supports configurable avatar clipping shapes, including circles, squares, rectangles, diamonds, ovals, and rounded rectangles.
+- Supports one-time custom background renders for designs that explicitly mark a background layer as customizable.
 - Caches fonts and card assets during a run.
 - Shrinks and wraps long names to fit the configured name area.
 
@@ -294,19 +296,40 @@ Use the design folder name with `--layout`, such as `--layout custom_card`. Dire
 Important layout sections:
 
 - `canvas`: Output dimensions.
-- `layers.background_image`: Base card image filename.
-- `layers.image_layers`: Optional ordered image stack, drawn bottom to top.
-- `layers.color_overlay`: Optional translucent panel.
-- `layers.decoration_overlay`: Foreground decoration filename.
+- `layers.image_layers`: Required ordered image stack, drawn bottom to top.
 - `fonts`: Font files, sizes, and colors.
-- `avatar`: Avatar position, size, and shape.
+- `avatar`: Avatar position, size or width/height, and shape.
 - `templates.master`: Master-specific layout overrides.
 - `templates.servant`: Servant-specific layout overrides.
 - `templates.*.text`: Text fields and their positions.
 
 Card asset filenames are resolved relative to the design folder. For example, `designs/custom_card/config.json` should refer to `master/01_background_base.png`, not `designs/custom_card/master/01_background_base.png`.
 
-If `layers.image_layers` exists, it replaces the older `background_image` / `decoration_overlay` flow:
+Avatar shapes are configured in the top-level `avatar` block or in role-specific template overrides. `size` keeps the avatar square for existing designs. Use `width` and `height` when a shape should be rectangular:
+
+```json
+{
+  "avatar": {
+    "x": 1100,
+    "y": 68,
+    "width": 520,
+    "height": 640,
+    "shape": "oval"
+  }
+}
+```
+
+Supported `shape` values are `circle`, `square`, `rectangle`, `diamond`, `oval`, `ellipse`, and `rounded_rectangle`. `rounded_rectangle` also accepts `radius` or `border_radius`; otherwise the renderer picks a proportional default.
+
+Designs can opt into one-time custom background renders by marking exactly the replaceable image layer:
+
+```json
+{"id": "background", "customizable": "background", "path": "master/01_background_base.png", "fit": "cover", "opacity": 1}
+```
+
+Custom background uploads are runtime-only. The bot uses the uploaded image for that render, does not save it locally, and does not store it in MongoDB. Later card edits or rerenders use the design's default background again.
+
+Each `image_layers` item is either an image asset or a generated color overlay:
 
 ```json
 {
@@ -364,7 +387,6 @@ Each entry in `templates.*.text` draws one piece of text. The key is used as the
 Supported text options:
 
 - `field`: Character-data field to draw. Defaults to the text entry key.
-- `value`: Literal text to draw instead of reading character data.
 - `x`, `y`: Text anchor position.
 - `font`: Font key from the layout's `fonts` section. Defaults to `detail`.
 - `anchor`: Pillow text anchor, such as `mt`, `mm`, `ra`, or `la`.

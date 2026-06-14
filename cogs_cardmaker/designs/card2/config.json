@@ -43,7 +43,7 @@
         "master": {
             "layers": {
                 "image_layers": [
-                    {"path": "master/01_background_card2_background.png", "fit": "cover", "opacity": 1},
+                    {"id": "background", "customizable": "background", "path": "master/01_background_card2_background.png", "fit": "cover", "opacity": 1},
                     {"type": "color_overlay", "enabled": true, "color": [20, 20, 20], "opacity": 204, "border_radius": 40, "margin": 0},
                     {"path": "master/02_foreground_card2_decoration.png", "fit": "stretch", "opacity": 1}
                 ]
@@ -61,7 +61,7 @@
         "servant": {
             "layers": {
                 "image_layers": [
-                    {"path": "servant/01_background_card2_background.png", "fit": "cover", "opacity": 1},
+                    {"id": "background", "customizable": "background", "path": "servant/01_background_card2_background.png", "fit": "cover", "opacity": 1},
                     {"type": "color_overlay", "enabled": true, "color": [20, 20, 20], "opacity": 204, "border_radius": 40, "margin": 0},
                     {"path": "servant/02_foreground_card2_decoration.png", "fit": "stretch", "opacity": 1}
                 ]

@@ -1,0 +1,390 @@
+:root {
+  color-scheme: dark;
+  --bg: #111214;
+  --panel: #1b1d21;
+  --panel-2: #24272d;
+  --line: #383c44;
+  --text: #f3f0ea;
+  --muted: #aeb4bf;
+  --accent: #c92a2a;
+  --accent-2: #e2b84b;
+  --focus: #7db7ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, Segoe UI, Arial, sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #292d34;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.file-button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 76px;
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #292d34;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.file-button:hover {
+  border-color: var(--accent-2);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+button:hover {
+  border-color: var(--accent-2);
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  min-height: 100vh;
+}
+
+.workspace {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-width: 0;
+  padding: 18px;
+  gap: 14px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
+p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.topbar-actions button {
+  min-width: 76px;
+}
+
+.button-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.export-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.check-row input {
+  width: auto;
+  min-height: 0;
+}
+
+.nudge-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.control-grid.compact {
+  grid-template-columns: 96px minmax(0, 1fr);
+}
+
+.stage-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    linear-gradient(45deg, #181a1f 25%, transparent 25%),
+    linear-gradient(-45deg, #181a1f 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #181a1f 75%),
+    linear-gradient(-45deg, transparent 75%, #181a1f 75%),
+    #202329;
+  background-size: 28px 28px;
+  background-position: 0 0, 0 14px, 14px -14px, -14px 0;
+  overflow: auto;
+  padding: 18px;
+}
+
+#cardCanvas {
+  display: block;
+  width: calc(var(--preview-fit-width, 100%) * var(--preview-zoom, 1));
+  max-width: none;
+  aspect-ratio: 8 / 5;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.5);
+  background: #141414;
+  cursor: grab;
+}
+
+#cardCanvas.dragging {
+  cursor: grabbing;
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.zoom-control {
+  display: grid;
+  grid-template-columns: auto 120px auto;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.zoom-control strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.zoom-control input {
+  min-height: 0;
+  padding: 0;
+}
+
+.zoom-control button {
+  min-width: 48px;
+  min-height: 30px;
+}
+
+.panel {
+  min-height: 100vh;
+  border-left: 1px solid var(--line);
+  background: var(--panel);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-bottom: 1px solid var(--line);
+}
+
+.tab {
+  border: 0;
+  border-right: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--panel);
+}
+
+.tab:last-child {
+  border-right: 0;
+}
+
+.tab.active {
+  background: var(--panel-2);
+  color: #fff;
+  box-shadow: inset 0 -3px 0 var(--accent);
+}
+
+.tab-panel {
+  display: none;
+  overflow: auto;
+  padding: 16px;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+.control-group {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.row-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+label,
+.row-label label {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.hint {
+  margin: 0;
+  font-size: 12px;
+}
+
+.badge {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #121419;
+  color: var(--text);
+}
+
+input[readonly] {
+  color: var(--muted);
+}
+
+input,
+select {
+  min-height: 34px;
+  padding: 6px 8px;
+}
+
+input[type="color"] {
+  padding: 2px;
+}
+
+input[type="range"] {
+  padding: 0;
+}
+
+textarea {
+  resize: vertical;
+  padding: 8px;
+  line-height: 1.35;
+}
+
+select[size] {
+  padding: 4px;
+}
+
+.control-grid {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.control-grid textarea {
+  min-height: 72px;
+}
+
+#jsonOutput {
+  min-height: 430px;
+  font-family: Consolas, Monaco, monospace;
+  font-size: 12px;
+  white-space: pre;
+}
+
+@media (max-width: 980px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .panel {
+    min-height: auto;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .topbar-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  #cardCanvas {
+    width: calc(var(--preview-fit-width, 100%) * var(--preview-zoom, 1));
+  }
+
+  .zoom-control {
+    grid-template-columns: auto minmax(80px, 1fr) auto;
+  }
+}

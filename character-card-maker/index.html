@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Character Card Maker</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <section class="workspace" aria-label="Card preview workspace">
+      <div class="topbar">
+        <div>
+          <h1>Character Card Maker</h1>
+          <p>Design on a fixed 8:5 canvas. Drag text directly on the preview.</p>
+        </div>
+        <div class="topbar-actions">
+          <label class="zoom-control" for="previewZoom">
+            <span>Zoom <strong id="zoomValue">Fit</strong></span>
+            <input id="previewZoom" type="range" min="10" max="200" step="5" value="100">
+            <button id="resetZoom" type="button">Fit</button>
+          </label>
+          <button id="loadSample" type="button" title="Load sample base image">Sample</button>
+          <label class="file-button" for="packageImport">Import</label>
+          <input id="packageImport" class="visually-hidden" type="file" accept=".zip,application/zip">
+        </div>
+      </div>
+
+      <div class="stage-wrap">
+        <canvas id="cardCanvas" width="1600" height="1000" aria-label="Card preview canvas"></canvas>
+      </div>
+
+      <div class="status-row">
+        <span id="statusText">Ready.</span>
+        <span>Canvas: 1600 x 1000</span>
+      </div>
+    </section>
+
+    <aside class="panel" aria-label="Design controls">
+      <div class="tabs" role="tablist" aria-label="Control sections">
+        <button class="tab active" type="button" data-tab="assets">Assets</button>
+        <button class="tab" type="button" data-tab="text">Text</button>
+        <button class="tab" type="button" data-tab="export">Export</button>
+      </div>
+
+      <section class="tab-panel active" id="tab-assets">
+        <div class="control-group">
+          <label for="assetRoleMode">Asset role</label>
+          <select id="assetRoleMode">
+            <option value="master">Master</option>
+            <option value="servant">Servant</option>
+          </select>
+          <p class="hint">Each role has its own image layer stack.</p>
+        </div>
+
+        <div class="control-group">
+          <label for="baseUpload">Base images</label>
+          <input id="baseUpload" type="file" accept="image/*" multiple>
+          <p class="hint">Only 8:5 images are accepted.</p>
+        </div>
+
+        <div class="control-group">
+          <label for="fontUpload">Fonts</label>
+          <input id="fontUpload" type="file" accept=".ttf,.otf,.woff,.woff2" multiple>
+          <p class="hint">Uploaded fonts become available in the text controls.</p>
+        </div>
+
+        <div class="control-group">
+          <div class="row-label">
+            <label>Image layers</label>
+            <button id="removeLayer" type="button" title="Remove selected image layer">Remove</button>
+          </div>
+          <select id="layerList" size="6" aria-label="Image layers"></select>
+          <div class="button-row">
+            <button id="moveLayerUp" type="button">Move Up</button>
+            <button id="moveLayerDown" type="button">Move Down</button>
+          </div>
+          <label class="check-row">
+            <input id="layerVisible" type="checkbox" checked>
+            <span>Visible in preview and export</span>
+          </label>
+          <label for="layerOpacity">Opacity</label>
+          <input id="layerOpacity" type="range" min="0" max="100" value="100">
+        </div>
+      </section>
+
+      <section class="tab-panel" id="tab-text">
+        <div class="control-group">
+          <label for="roleMode">Preview role</label>
+          <select id="roleMode">
+            <option value="master">Master</option>
+            <option value="servant">Servant</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <div class="row-label">
+            <label for="textList">Text elements</label>
+            <span class="badge">Fixed fields</span>
+          </div>
+          <select id="textList" size="7" aria-label="Text elements"></select>
+        </div>
+
+        <div class="control-grid">
+          <label for="fieldName">Field</label>
+          <input id="fieldName" type="text" autocomplete="off" readonly>
+
+          <label for="textValue">Text</label>
+          <textarea id="textValue" rows="3"></textarea>
+
+          <label for="fontFamily">Font</label>
+          <select id="fontFamily"></select>
+
+          <label for="fontSize">Size</label>
+          <input id="fontSize" type="number" min="8" max="240" value="60">
+
+          <label for="fontColor">Color</label>
+          <input id="fontColor" type="color" value="#f5f5f5">
+
+          <label for="anchor">Anchor</label>
+          <select id="anchor">
+            <option value="la">Left</option>
+            <option value="ma">Center</option>
+            <option value="ra">Right</option>
+            <option value="lt">Top left</option>
+            <option value="mt">Top center</option>
+            <option value="rt">Top right</option>
+            <option value="lm">Middle left</option>
+            <option value="mm">Middle</option>
+            <option value="rm">Middle right</option>
+          </select>
+
+          <label for="textX">X</label>
+          <input id="textX" type="number" min="0" max="1600">
+
+          <label for="textY">Y</label>
+          <input id="textY" type="number" min="0" max="1000">
+
+          <label for="maxWidth">Max width</label>
+          <input id="maxWidth" type="number" min="0" max="1600">
+
+          <label for="lineHeight">Line height</label>
+          <input id="lineHeight" type="number" min="8" max="260">
+        </div>
+
+        <div class="control-group">
+          <div class="row-label">
+            <label>Nudge</label>
+            <span class="badge">Position</span>
+          </div>
+          <div class="nudge-grid">
+            <span></span>
+            <button class="nudge-button" type="button" data-dx="0" data-dy="-1">Up</button>
+            <span></span>
+            <button class="nudge-button" type="button" data-dx="-1" data-dy="0">Left</button>
+            <button class="nudge-button" type="button" data-dx="0" data-dy="1">Down</button>
+            <button class="nudge-button" type="button" data-dx="1" data-dy="0">Right</button>
+          </div>
+          <label class="check-row">
+            <input id="snapEnabled" type="checkbox" checked>
+            <span>Snap to grid</span>
+          </label>
+          <div class="control-grid compact">
+            <label for="gridSize">Grid size</label>
+            <input id="gridSize" type="number" min="1" max="200" value="10">
+            <label for="nudgeStep">Nudge step</label>
+            <input id="nudgeStep" type="number" min="1" max="200" value="10">
+          </div>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="tab-export">
+        <div class="control-group">
+          <label for="layoutName">Design name</label>
+          <input id="layoutName" type="text" value="custom_card">
+        </div>
+        <div class="control-group">
+          <div class="export-actions">
+            <button id="downloadPng" type="button">Download Preview PNG</button>
+            <button id="downloadPackage" type="button">Download Design Package</button>
+            <button id="copyJson" type="button">Copy Config JSON</button>
+          </div>
+          <p class="hint">Exports design config JSON, ordered image layers, uploaded fonts, and preview PNG.</p>
+        </div>
+        <div class="control-group">
+          <label for="jsonOutput">Design config JSON</label>
+          <textarea id="jsonOutput" rows="18" spellcheck="false"></textarea>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

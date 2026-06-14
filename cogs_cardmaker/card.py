@@ -10,10 +10,11 @@ from pymongo import MongoClient
 
 # --- DIRECTORY SETTINGS ---
 class Defaults:
-    DESIGNS_DIR = Path("designs")
-    FONTS_DIR = Path("fonts")
-    FACECLAIMS_DIR = Path("faceclaims")
-    OUTPUT_DIR = Path("outputs")
+    BASE_DIR = Path(__file__).resolve().parent
+    DESIGNS_DIR = BASE_DIR / "designs"
+    FONTS_DIR = BASE_DIR / "fonts"
+    FACECLAIMS_DIR = BASE_DIR / "faceclaims"
+    OUTPUT_DIR = BASE_DIR / "outputs"
     MONGO_DATABASE = "grail-kun"
     MONGO_CHARACTER_COLLECTION = "cardmaker_characters"
 
@@ -183,62 +184,107 @@ class CardGenerator:
         canvas.alpha_composite(resized, ((target_w - new_w) // 2, (target_h - new_h) // 2))
         return canvas
 
-    def _create_base_canvas(self, layout, template_role):
-        layers = layout["layers"]
+    def _avatar_size(self, avatar_config):
+        size = avatar_config.get("size")
+        if isinstance(size, (list, tuple)):
+            return int(size[0]), int(size[1])
 
-        if "image_layers" in layers:
-            canvas = Image.new("RGBA", self.canvas_size, (0, 0, 0, 0))
-            for layer_cfg in layers["image_layers"]:
-                if layer_cfg.get("type") == "color_overlay":
-                    self._apply_color_overlay(canvas, layer_cfg)
-                    continue
+        width = avatar_config.get("width", size)
+        height = avatar_config.get("height", size)
+        if width is None or height is None:
+            raise ValueError("Avatar config requires size or both width and height.")
 
-                layer_img = self._fit_image(
-                    self._load_image(layer_cfg["path"], template_role=template_role),
-                    self.canvas_size,
-                    layer_cfg.get("fit", "cover")
-                )
-                opacity = layer_cfg.get("opacity", 1)
-                if opacity <= 1:
-                    opacity = int(opacity * 255)
-                if opacity < 255:
-                    r, g, b, a = layer_img.split()
-                    a = a.point(lambda p: int(p * (opacity / 255)))
-                    layer_img.putalpha(a)
-                canvas.alpha_composite(layer_img)
-            return canvas
-        
-        # 1. Background
-        bg_cfg = layers.get("background_image")
-        if bg_cfg:
-            canvas = self._fit_image(
-                self._load_image(bg_cfg["path"], template_role=template_role),
-                self.canvas_size,
-                bg_cfg.get("fit", "cover")
+        return int(width), int(height)
+
+    def _avatar_mask(self, avatar_config, size):
+        shape = str(avatar_config.get("shape", "rectangle")).strip().lower()
+        shape = shape.replace("-", "_").replace(" ", "_")
+        width, height = size
+
+        if shape in {"none", "square", "rectangle", "rect"}:
+            return None
+
+        mask = Image.new("L", size, 0)
+        draw = ImageDraw.Draw(mask)
+        bounds = (0, 0, width - 1, height - 1)
+
+        if shape in {"circle", "oval", "ellipse"}:
+            draw.ellipse(bounds, fill=255)
+        elif shape == "diamond":
+            draw.polygon(
+                [
+                    (width // 2, 0),
+                    (width - 1, height // 2),
+                    (width // 2, height - 1),
+                    (0, height // 2),
+                ],
+                fill=255,
             )
+        elif shape in {"rounded", "rounded_square", "rounded_rectangle", "rounded_rect"}:
+            radius = avatar_config.get("radius", avatar_config.get("border_radius"))
+            if radius is None:
+                radius = min(width, height) // 8
+            draw.rounded_rectangle(bounds, radius=int(radius), fill=255)
         else:
-            canvas = Image.new("RGBA", self.canvas_size, (0, 0, 0, 0))
+            supported = "circle, square, rectangle, diamond, oval, ellipse, rounded_rectangle"
+            raise ValueError(f"Unsupported avatar shape '{shape}'. Supported shapes: {supported}.")
 
-        # 2. Color Overlay Panel
-        color_cfg = layers.get("color_overlay")
-        self._apply_color_overlay(canvas, color_cfg)
+        return mask
 
-        # 3. Decoration Overlay
-        deco_cfg = layers.get("decoration_overlay")
-        if deco_cfg:
-            decoration = self._fit_image(
-                self._load_image(deco_cfg["path"], template_role=template_role),
+    def _prepare_avatar(self, image, avatar_config):
+        size = self._avatar_size(avatar_config)
+        avatar = ImageOps.fit(image, size, centering=(0.5, 0.5))
+        mask = self._avatar_mask(avatar_config, size)
+        if mask is None:
+            return avatar
+
+        clipped = Image.new("RGBA", size, (0, 0, 0, 0))
+        clipped.paste(avatar, (0, 0), mask)
+        return clipped
+
+    def supports_runtime_image(self, slot, template_role=None):
+        roles = [template_role] if template_role else ["master", "servant"]
+        for role in roles:
+            layout = self._resolved_layout(role)
+            for layer_cfg in layout.get("layers", {}).get("image_layers", []):
+                if layer_cfg.get("customizable") == slot:
+                    return True
+        return False
+
+    def _runtime_layer_image(self, layer_cfg, runtime_images):
+        slot = layer_cfg.get("customizable")
+        if not slot or not runtime_images or slot not in runtime_images:
+            return None
+        image = runtime_images[slot]
+        if isinstance(image, Image.Image):
+            return image.convert("RGBA")
+        raise TypeError(f"Runtime image for '{slot}' must be a PIL Image.")
+
+    def _create_base_canvas(self, layout, template_role, runtime_images=None):
+        image_layers = layout["layers"]["image_layers"]
+        canvas = Image.new("RGBA", self.canvas_size, (0, 0, 0, 0))
+        for layer_cfg in image_layers:
+            if layer_cfg.get("type") == "color_overlay":
+                self._apply_color_overlay(canvas, layer_cfg)
+                continue
+
+            source_img = self._runtime_layer_image(layer_cfg, runtime_images)
+            if source_img is None:
+                source_img = self._load_image(layer_cfg["path"], template_role=template_role)
+
+            layer_img = self._fit_image(
+                source_img,
                 self.canvas_size,
-                deco_cfg.get("fit", "stretch")
+                layer_cfg.get("fit", "cover")
             )
-            
-            # Apply Opacity
-            if deco_cfg.get("opacity", 255) < 255:
-                r, g, b, a = decoration.split()
-                a = a.point(lambda p: int(p * (deco_cfg["opacity"] / 255)))
-                decoration.putalpha(a)
-                
-            canvas.alpha_composite(decoration)
+            opacity = layer_cfg.get("opacity", 1)
+            if opacity <= 1:
+                opacity = int(opacity * 255)
+            if opacity < 255:
+                r, g, b, a = layer_img.split()
+                a = a.point(lambda p: int(p * (opacity / 255)))
+                layer_img.putalpha(a)
+            canvas.alpha_composite(layer_img)
         return canvas
 
     def _apply_color_overlay(self, canvas, color_cfg):
@@ -302,11 +348,11 @@ class CardGenerator:
         rendered_words = " ".join(lines).split()
         return len(rendered_words) >= len(original_words)
 
-    def render(self, data):
+    def render(self, data, runtime_images=None):
         """Generate the final card image from character data."""
         template_role = self._template_role_for(data)
         layout = self._resolved_layout(template_role)
-        card = self._create_base_canvas(layout, template_role)
+        card = self._create_base_canvas(layout, template_role, runtime_images=runtime_images)
         draw = ImageDraw.Draw(card)
         fonts = layout["fonts"]
 
@@ -316,23 +362,10 @@ class CardGenerator:
         if avatar_path:
             faceclaim = self._load_image(avatar_path, is_faceclaim=True, missing_ok=True)
             if faceclaim:
-                faceclaim = ImageOps.fit(faceclaim, (av_cfg["size"], av_cfg["size"]), centering=(0.5, 0.5))
-                
-                if av_cfg.get("shape") == "circle":
-                    mask = Image.new("L", (av_cfg["size"], av_cfg["size"]), 0)
-                    ImageDraw.Draw(mask).ellipse((0, 0, av_cfg["size"], av_cfg["size"]), fill=255)
-                    avatar = Image.new("RGBA", (av_cfg["size"], av_cfg["size"]), (0, 0, 0, 0))
-                    avatar.paste(faceclaim, (0, 0), mask)
-                    faceclaim = avatar
-
+                faceclaim = self._prepare_avatar(faceclaim, av_cfg)
                 card.alpha_composite(faceclaim, (av_cfg["x"], av_cfg["y"]))
 
-        if "text" in layout:
-            display_data = dict(data)
-            self._render_text_elements(draw, display_data, layout)
-        else:
-            display_data = self._display_data_for_template(data, template_role)
-            self._render_legacy_text(draw, display_data, layout)
+        self._render_text_elements(draw, dict(data), layout)
 
         return card
 
@@ -340,7 +373,7 @@ class CardGenerator:
         fonts = layout["fonts"]
         for element_id, cfg in layout.get("text", {}).items():
             field = cfg.get("field", element_id)
-            value = cfg.get("value", data.get(field))
+            value = data.get(field)
             if value is None:
                 continue
 
@@ -375,46 +408,6 @@ class CardGenerator:
                     fill=font_config["color"],
                     anchor=anchor
                 )
-
-    def _render_legacy_text(self, draw, data, layout):
-        fonts = layout["fonts"]
-        top = layout["top_block"]
-        center_x = top["x"] + (top["max_width"] / 2)
-        
-        # Name
-        name_font, lines = self._fit_text(draw, data["name"], fonts["name"], top["max_width"], top.get("name_max_lines", 2))
-        for i, line in enumerate(lines):
-            draw.text((center_x, top["y"] + i * top["name_line_height"]), line, font=name_font, fill=fonts["name"]["color"], anchor="mt")
-
-        # Role & Username
-        draw.text((center_x, top["role_y"]), data["role"], font=self._get_font(fonts["role"]), fill=fonts["role"]["color"], anchor="mt")
-        username = data.get("username", "")
-        username_prefix = top.get("username_prefix", "@")
-        user_text = username if username.startswith(username_prefix) else f"{username_prefix}{username}"
-        draw.text((center_x, top["username_y"]), user_text, font=self._get_font(fonts["username"]), fill=fonts["username"]["color"], anchor="mt")
-
-        # 3. Dynamic Details
-        detail_font = self._get_font(fonts["detail"])
-        for key, pos in layout.get("details", {}).items():
-            if key in data:
-                draw.text((pos["x"], pos["y"]), data[key], font=detail_font, fill=fonts["detail"]["color"], anchor=pos["anchor"])
-
-        # 4. Footer
-        footer_cfg = layout["footer"]
-        footer_x = self.canvas_size[0] / 2
-        draw.text((footer_x, footer_cfg["y"]), data["footer_text"], font=self._get_font(fonts["footer"]), fill=fonts["footer"]["color"], anchor=footer_cfg["anchor"])
-
-    def _display_data_for_template(self, data, template_role):
-        if template_role != "servant":
-            return data
-
-        display_data = dict(data)
-        if "class" in data:
-            display_data["affiliation"] = data["class"]
-        if "nationality" in data:
-            display_data["occupation"] = data["nationality"]
-        return display_data
-
 
 def iter_mongo_character_items(mongo_uri, database, collection, status="active"):
     """Yield character data from MongoDB."""

@@ -18,6 +18,7 @@ AUDIT_COLLECTION = "cardmaker_audit"
 CHARACTER_FIELDS = [
     "name",
     "role",
+    "scope",
     "type",
     "username",
     "userid",
@@ -84,15 +85,8 @@ def normalize_character(item, now, default_status, default_design):
         "last_rendered_at": None,
     }
     doc["discord"] = {
-        "guild_id": None,
-        "forum_channel_id": None,
-        "thread_id": None,
-        "starter_message_id": None,
-        "card_message_id": None,
-        "post_status": "not_posted",
-        "last_posted_at": None,
-        "last_synced_at": None,
-        "last_error": None,
+        "starter_body": None,
+        "posts": [],
     }
     doc["admin"] = {
         "status": default_status,
@@ -109,6 +103,8 @@ def normalize_character(item, now, default_status, default_design):
             "changed_at": now,
         }
     ]
+    if not doc.get("scope"):
+        doc["scope"] = "full"
     return doc
 
 
@@ -209,7 +205,7 @@ def ensure_indexes(db):
     characters.create_index("username")
     characters.create_index("role")
     characters.create_index("admin.status")
-    characters.create_index("discord.post_status")
+    characters.create_index("discord.posts.guild_id")
 
     audit.create_index([("character_id", 1), ("created_at", -1)])
     audit.create_index([("actor_id", 1), ("created_at", -1)])

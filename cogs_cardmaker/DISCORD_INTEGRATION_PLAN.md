@@ -50,7 +50,7 @@ Current Discord modal/component limits to design around:
 - Select menu options: max 25 options.
 - Button label: max 80 characters, though shorter labels are recommended.
 - File upload components are available in modals, so faceclaim upload can be part of the panel/modal flow if supported by `discord.py`.
-- Verify `discord.py 2.6.4` support before implementation for Components V2 and modal file upload components.
+- Verify `discord.py 2.7.1` support before implementation for Components V2 and modal file upload components.
 - If modal file uploads are not supported by the installed `discord.py` version, fall back to asking the user/admin to send a normal message attachment in the card thread after clicking an upload button.
 - These limits are acceptable. If a user's text exceeds Discord modal limits, the bot should reject it with a clear message rather than trying to work around the limit.
 
@@ -82,16 +82,8 @@ The existing cardmaker schema is a good base:
     "last_rendered_at": null
   },
   "discord": {
-    "guild_id": null,
-    "forum_channel_id": null,
-    "thread_id": null,
-    "starter_message_id": null,
     "starter_body": null,
-    "card_message_id": null,
-    "post_status": "not_posted",
-    "last_posted_at": null,
-    "last_synced_at": null,
-    "last_error": null
+    "posts": []
   },
   "admin": {
     "status": "active",
@@ -103,7 +95,7 @@ The existing cardmaker schema is a good base:
 }
 ```
 
-The `discord` block should become the link between MongoDB and the posted forum thread.
+The `discord` block should become the link between MongoDB and posted forum threads. `discord.posts` is the only source of truth for posted thread locations.
 
 `scope` should distinguish full characters from minor characters:
 
@@ -145,20 +137,20 @@ Thread titles should carry useful browsing context that does not need a scarce f
 Suggested title format:
 
 ```text
-{Role Label} | {Character Name} | @{canonical_username} | {Debut Label}
+{Master OR Servant} | {Character Name} | @{canonical_username} | {Debut Label}
 ```
 
 Examples:
 
 ```text
-Lancer | Captain Ahab | @magnetm | ROTW
+Servant | Captain Ahab | @magnetm | ROTW
 Master | Nannerl von Eltz | @inkown | Narssarsuk
 ```
 
 Thread title rules:
 
 - If the character is a Master, use `Master` as the role label.
-- If the character is a Servant, use their servant class as the role label.
+- If the character is a Servant, use `Servant` as the role label. Servant class is already visible on the card.
 - Use the canonical username from MongoDB, which should be plain text with an `@` symbol.
 - The debut label comes from the first part of `footer_text` before the `|` symbol.
 - If the debut label is `Rest of the World`, use `ROTW`.
@@ -173,11 +165,6 @@ Expected status tags:
 - `Hiatus`
 - `Retired`
 
-Expected role tags:
-
-- `Master`
-- `Servant`
-
 Expected type tags:
 
 - `PC`
@@ -189,14 +176,22 @@ Expected player-status tags:
 - `Looking for Master`
 - `Looking for Servant`
 
-This initial tag set is final for now: 10 tags total.
+This initial tag set is final for now: 8 tags total.
 
 Status does not need special bot commands. The bot should read the applied forum thread tag when it needs to know the current status.
 
 When a status tag changes, MongoDB should be synced:
 
 - Only the three status tags count as status: `Active`, `Hiatus`, `Retired`.
+- `Looking for RP`, `Looking for Master`, and `Looking for Servant` imply active status and should sync `admin.status` to `active`.
+- `Active`, `Hiatus`, and `Retired` are mutually exclusive. When one is newly added, it becomes the status to keep and the other two are dropped.
+- Because `Looking for...` implies active, a newly-added `Looking for...` tag also drops `Hiatus`, `Retired`, and `Active`.
+- `Active` and any `Looking for...` tag are mutually exclusive.
+- `Looking for Master` and `Looking for Servant` are mutually exclusive.
+- `Looking for RP` can coexist with either `Looking for Master` or `Looking for Servant`.
+- If a thread is tagged `Hiatus` or `Retired`, drop `Active` and all `Looking for...` tags.
 - Other tags should not affect `admin.status`.
+- `PC` and `NPC` are mutually exclusive. Admin native PC/NPC tag changes sync into MongoDB `type` when the bot can identify the admin actor from the audit log; non-admin native changes normalize back to MongoDB. Admins can also sync the current PC/NPC tag into MongoDB `type` with `Sync Tags`.
 - `admin.status` should be updated to the matching status value.
 - The status sync should update the relevant timestamp, such as `admin.updated_at` or a dedicated status-sync timestamp.
 - Status sync events should be logged in MongoDB.
@@ -243,11 +238,10 @@ f.card minorchannel #forum-channel
 f.card post <doc_id_or_url_or_character_id>
 f.card postmany <doc_id_or_url_or_character_id> ...
 f.card postall
-f.card create <doc_url> ...
+f.card create
 f.card panel
 f.card setdesign <design>
 f.card setdefaultdesign <design>
-f.card template
 ```
 
 ### `f.card channel #forum-channel`
@@ -289,37 +283,32 @@ f.card template
 - Should likely include a dry-run or confirmation step before creating many threads.
 - Eligibility could mean:
   - `admin.status == "active"`
-  - `discord.post_status != "posted"`
+  - no `discord.posts` entry for the current guild
 - Already-posted characters should be skipped by default.
-
-### `f.card template`
-
-- Admin-facing helper.
-- Sends a copy/paste template for `f.card create`.
 
 ### `f.card create`
 
 - Admin-only.
 - Used when the Google Doc ID does not exist in MongoDB.
 - Accepts a templated Discord message body rather than a long one-line command.
+- With no fields, sends a copy/paste template.
 - Creates a new MongoDB character document.
 - Then renders and posts it.
 - The command message should look like:
 
 ```text
 f.card create
---doc: https://docs.google.com/document/d/.../edit
---name: Captain Ahab
---role: Servant
---scope: full
---type: PC
---player: @magnetm
---faceclaim: captain_ahab.png
---class: Lancer
---nationality: American
---alignment: Chaotic Good
---footer: Rest of the World | Event Details
---design: card2
+--doc: google_doc_URL
+--name: character_name
+--role: Master OR Servant OR Other (Human,DOG,etc.)
+--scope: full OR minor
+--type: PC OR NPC
+--player: @mention
+--class: class
+--nationality: nationality
+--alignment: alignment
+--footer: origin_event_name | origin_event_details
+--design: card2 OR other_design_name
 ```
 
 - The bot parses the template fields, derives `username` and `userid` from the Discord mention in `--player`, saves the record, renders the card, and posts it.
@@ -329,13 +318,16 @@ f.card create
 - Must be run inside a card thread.
 - Opens or sends a thread-local control panel with buttons.
 - Useful buttons:
-  - Edit Info
-  - Edit Body
-  - Change Design
-  - Rerender
+  - Edit Card
+  - Edit Starter Post
+  - Edit Design
+  - Edit Faceclaim
   - Sync Tags
+  - Delete Card
 - Admins see all relevant controls.
 - Owners see only allowed controls.
+- `Sync Tags` manually reapplies the tag rules and updates MongoDB `admin.status` from the thread's current tags. It can also sync the current PC/NPC tag into MongoDB `type`.
+- `Sync Tags`, `Admin Fields`, and `Delete Card` are admin-only.
 
 ### `f.card setdesign <design>`
 
@@ -356,7 +348,7 @@ f.card panel
 ### User `f.card panel`
 
 - Must be run inside an existing card forum thread.
-- Finds the character by `discord.thread_id == ctx.channel.id`.
+- Finds the character by `discord.posts.thread_id == ctx.channel.id`.
 - Checks that:
 
 ```python
@@ -376,6 +368,8 @@ str(ctx.author.id) == str(character["userid"])
 - Admins may edit all fields.
 - Users and admins may upload a new faceclaim image through the edit flow.
 - A newly uploaded faceclaim replaces the old faceclaim for that character.
+- The faceclaim upload message should be deleted after processing.
+- The faceclaim upload flow should not send a success message; the updated card is the confirmation.
 - Saving a modal immediately updates MongoDB, rerenders the card, updates the starter message/card image, and syncs tags/title/body.
 - There is no preview command. Cards are simple enough to update on the fly and check after each update.
 
@@ -452,6 +446,10 @@ Recommended filename format:
 
 This puts the readable character name first for alphabetical browsing, while keeping the full Google Doc ID for straightforward searching and collision avoidance.
 
+If a character changes scope between full and minor, treat that as a new public listing for now: retire the previous thread/card and create or post the character in the correct scope channel with the appropriate Google Doc URL.
+
+`Delete Card` supports this workflow by moving the MongoDB document to `cardmaker_deleted` and deleting the Discord thread. It is admin-only, audited, and protected by an explicit confirmation step.
+
 If extra collision safety is wanted later, use:
 
 ```text
@@ -482,18 +480,17 @@ Example:
 
 ```text
 f.card create
---doc: https://docs.google.com/document/d/.../edit
---name: Captain Ahab
---role: Servant
---scope: full
---type: PC
---player: @magnetm
---faceclaim: captain_ahab.png
---class: Lancer
---nationality: American
---alignment: Chaotic Good
---footer: Rest of the World | Event Details
---design: card2
+--doc: google_doc_URL
+--name: character_name
+--role: Master OR Servant OR Other (Human,DOG,etc.)
+--scope: full OR minor
+--type: PC OR NPC
+--player: @mention
+--class: class
+--nationality: nationality
+--alignment: alignment
+--footer: origin_event_name | origin_event_details
+--design: card2 OR other_design_name
 ```
 
 Pros:
@@ -506,26 +503,6 @@ Pros:
 Cons:
 
 - Still requires admins to fill fields correctly.
-
-### Option B: Discord Modal
-
-Admin runs:
-
-```text
-f.card create <doc_url>
-```
-
-The bot opens a modal for fields such as name, role, username, alignment, and footer text.
-
-Pros:
-
-- Better Discord UX.
-- Less command clutter.
-
-Cons:
-
-- More implementation work.
-- Modals have field/count limits, so multi-step input may be needed.
 
 ### Option C: Google Doc Parsing
 
@@ -576,7 +553,7 @@ Cons:
 
 - Map forum tags to status.
 - Sync only `Active`, `Hiatus`, and `Retired` into `admin.status`.
-- Apply role, type, and player-status tags.
+- Apply type and player-status tags.
 - Include servant class and debut/event details in thread title/body instead of tags.
 - Strip or suppress links in starter message text.
 
@@ -599,16 +576,18 @@ Cons:
 1. Thread title format:
 
 ```text
-{Master OR Servant Class} | {character_name} | @{canonical_username} | {debut_label}
+{Master OR Servant} | {character_name} | @{canonical_username} | {debut_label}
 ```
 
 If the debut label is `Rest of the World`, display it as `ROTW`.
 
-2. Owners can edit all fields except `username` and `footer_text`. Admins can edit all fields.
+2. Owners can edit normal card fields except `username`, `footer_text`, `scope`, `type`, `userid`, and `safe_name`. Admins can edit admin-controlled display/data fields such as canonical username, footer text, and Google Docs URL. `type` is managed through PC/NPC forum tags. `scope`, `userid`, `safe_name`, and faceclaim filenames are internal/automatic.
 
 3. `f.card setdesign <design>` rerenders immediately.
 
 4. There is no preview command. Users can update on the fly and inspect the updated card afterward.
+
+There is also no separate rerender panel button, because edit, design, faceclaim, and starter-post flows rerender immediately.
 
 5. Status tags should sync into MongoDB. Only `Active`, `Hiatus`, and `Retired` count as status tags. Sync the matching value into `admin.status` and update the timestamp.
 
@@ -630,33 +609,31 @@ Discord modals can only show a small number of text inputs at once, so editing s
 Modal grouping:
 
 ```text
-Edit Identity
+Edit Card
 - name
 - role
-- scope
-- type
-- userid
-```
-
-```text
-Edit Servant Details
 - class
 - nationality
 - alignment
-- faceclaim
 ```
 
 ```text
-Edit Master Details
+Edit Card
+- name
+- role
 - affiliation
 - occupation
 - alignment
-- faceclaim
 ```
 
 ```text
 Edit Display Text
-- starter message body
+- original post
+```
+
+```text
+Edit Design
+- design
 ```
 
 ```text
@@ -664,8 +641,6 @@ Admin Fields
 - username
 - footer_text
 - source_url
-- safe_name
-- design
 ```
 
 Owners should not see or be able to submit restricted admin-only fields such as `username` and `footer_text`.
