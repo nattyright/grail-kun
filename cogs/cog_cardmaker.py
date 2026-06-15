@@ -151,11 +151,21 @@ class CardEditModal(discord.ui.Modal):
 
 
 class CardPanelView(discord.ui.View):
-    def __init__(self, cog: "CardmakerCog", character: dict[str, Any], *, is_admin: bool, supports_custom_background: bool):
+    def __init__(
+        self,
+        cog: "CardmakerCog",
+        character: dict[str, Any],
+        *,
+        is_admin: bool,
+        supports_custom_background: bool,
+        current_tags: list[discord.ForumTag] | tuple[discord.ForumTag, ...] | None = None,
+    ):
         super().__init__(timeout=300)
         self.cog = cog
         self.character = character
         self.is_admin = is_admin
+        self.current_tag_names = cog.normalized_tags(current_tags or [])
+        self._style_tag_buttons()
         if not supports_custom_background:
             self.remove_item(self.upload_background)
         if not is_admin:
@@ -163,8 +173,89 @@ class CardPanelView(discord.ui.View):
             self.remove_item(self.admin_fields)
             self.remove_item(self.delete_card)
 
+    def _style_tag_buttons(self):
+        self.active_status.style = self._tag_style("active")
+        self.hiatus_status.style = self._tag_style("hiatus")
+        self.retired_status.style = self._tag_style("retired")
+        self.looking_rp.style = self._tag_style("looking for rp")
+        self.looking_master.style = self._tag_style("looking for master")
+        self.looking_servant.style = self._tag_style("looking for servant")
+
+    def _tag_style(self, tag_name: str) -> discord.ButtonStyle:
+        return discord.ButtonStyle.success if tag_name in self.current_tag_names else discord.ButtonStyle.secondary
+
     async def _open_modal(self, interaction: discord.Interaction, mode: str):
         await interaction.response.send_modal(CardEditModal(self.cog, self.character, mode, is_admin=self.is_admin))
+
+    async def _refresh_panel(
+        self,
+        interaction: discord.Interaction,
+        character: dict[str, Any],
+        applied_tags: list[discord.ForumTag] | tuple[discord.ForumTag, ...] | None,
+    ):
+        supports_custom_background = await design_supports_custom_background_async(character)
+        view = CardPanelView(
+            self.cog,
+            character,
+            is_admin=await is_cardmaker_staff_member(self.cog, interaction.user),
+            supports_custom_background=supports_custom_background,
+            current_tags=applied_tags,
+        )
+        await interaction.edit_original_response(content="Card controls", view=view)
+
+    async def _change_status_tag(self, interaction: discord.Interaction, status: str):
+        await interaction.response.defer()
+        if not isinstance(interaction.channel, discord.Thread):
+            await interaction.followup.send("This only works in a card thread.", ephemeral=True)
+            return
+        character, error = await self.cog.resolve_character_for_channel_user(interaction.channel, interaction.user)
+        if error or not character:
+            await interaction.followup.send(error or "I couldn't find this card anymore.", ephemeral=True)
+            return
+        try:
+            updated_character, applied_tags = await self.cog.sync_status_from_thread(
+                interaction.channel,
+                actor_id=interaction.user.id,
+                preferred_status=status,
+            )
+            await self.cog.repo.add_audit(
+                character["_id"],
+                interaction.user.id,
+                "card_tags_updated_from_panel",
+                {"thread_id": str(interaction.channel.id), "selection": status},
+            )
+            await self._refresh_panel(interaction, updated_character or character, applied_tags or interaction.channel.applied_tags)
+        except Exception as exc:
+            await self.cog.repo.set_last_error(character["_id"], str(exc), interaction.user.id)
+            await interaction.followup.send(f"Tag update failed: `{exc}`", ephemeral=True)
+
+    async def _toggle_looking_tag(self, interaction: discord.Interaction, tag_name: str):
+        await interaction.response.defer()
+        if not isinstance(interaction.channel, discord.Thread):
+            await interaction.followup.send("This only works in a card thread.", ephemeral=True)
+            return
+        character, error = await self.cog.resolve_character_for_channel_user(interaction.channel, interaction.user)
+        if error or not character:
+            await interaction.followup.send(error or "I couldn't find this card anymore.", ephemeral=True)
+            return
+        removing = tag_name in self.current_tag_names
+        try:
+            updated_character, applied_tags = await self.cog.sync_status_from_thread(
+                interaction.channel,
+                actor_id=interaction.user.id,
+                preferred_looking=None if removing else tag_name,
+                suppressed_looking_tags={tag_name} if removing else None,
+            )
+            await self.cog.repo.add_audit(
+                character["_id"],
+                interaction.user.id,
+                "card_tags_updated_from_panel",
+                {"thread_id": str(interaction.channel.id), "selection": tag_name, "removed": removing},
+            )
+            await self._refresh_panel(interaction, updated_character or character, applied_tags or interaction.channel.applied_tags)
+        except Exception as exc:
+            await self.cog.repo.set_last_error(character["_id"], str(exc), interaction.user.id)
+            await interaction.followup.send(f"Tag update failed: `{exc}`", ephemeral=True)
 
     @discord.ui.button(label="Edit Card", style=discord.ButtonStyle.primary, row=0)
     async def edit_card(self, interaction: discord.Interaction, _: discord.ui.Button):
@@ -202,6 +293,34 @@ class CardPanelView(discord.ui.View):
             "Send the custom background image as your next message in this thread. It will be used once and will not be saved; future card edits will return to the design default background.",
             ephemeral=True,
         )
+
+    @discord.ui.button(label="Edit Tags", style=discord.ButtonStyle.secondary, disabled=True, row=2)
+    async def tag_section_label(self, interaction: discord.Interaction, _: discord.ui.Button):
+        pass
+
+    @discord.ui.button(label="☀️Active", style=discord.ButtonStyle.secondary, row=3)
+    async def active_status(self, interaction: discord.Interaction, _: discord.ui.Button):
+        await self._change_status_tag(interaction, "active")
+
+    @discord.ui.button(label="☀️Hiatus", style=discord.ButtonStyle.secondary, row=3)
+    async def hiatus_status(self, interaction: discord.Interaction, _: discord.ui.Button):
+        await self._change_status_tag(interaction, "hiatus")
+
+    @discord.ui.button(label="☀️Retired", style=discord.ButtonStyle.secondary, row=3)
+    async def retired_status(self, interaction: discord.Interaction, _: discord.ui.Button):
+        await self._change_status_tag(interaction, "retired")
+
+    @discord.ui.button(label="🎉Looking for RP", style=discord.ButtonStyle.secondary, row=4)
+    async def looking_rp(self, interaction: discord.Interaction, _: discord.ui.Button):
+        await self._toggle_looking_tag(interaction, "looking for rp")
+
+    @discord.ui.button(label="🔎Looking for Master", style=discord.ButtonStyle.secondary, row=4)
+    async def looking_master(self, interaction: discord.Interaction, _: discord.ui.Button):
+        await self._toggle_looking_tag(interaction, "looking for master")
+
+    @discord.ui.button(label="🔎Looking for Servant", style=discord.ButtonStyle.secondary, row=4)
+    async def looking_servant(self, interaction: discord.Interaction, _: discord.ui.Button):
+        await self._toggle_looking_tag(interaction, "looking for servant")
 
     @discord.ui.button(label="Sync Tags", style=discord.ButtonStyle.danger, row=1)
     async def sync_tags(self, interaction: discord.Interaction, _: discord.ui.Button):
@@ -335,6 +454,7 @@ class CardmakerCog(commands.Cog):
             character,
             is_admin=await is_cardmaker_staff_member(self, user),
             supports_custom_background=supports_custom_background,
+            current_tags=channel.applied_tags if isinstance(channel, discord.Thread) else None,
         )
         return view, None
 
@@ -442,9 +562,11 @@ class CardmakerCog(commands.Cog):
         preferred_looking: str | None = None,
         preferred_type: str | None = None,
         preserve_current_type: bool = False,
+        suppressed_looking_tags: set[str] | None = None,
     ) -> list[discord.ForumTag]:
         tags: list[discord.ForumTag] = []
         current_names = self.normalized_tags(current_tags or [])
+        current_names -= suppressed_looking_tags or set()
         status_name = None
 
         def add_tag_name(name: str):
@@ -678,10 +800,11 @@ class CardmakerCog(commands.Cog):
         preferred_looking: str | None = None,
         preferred_type: str | None = None,
         allow_type_sync: bool = False,
-    ):
+        suppressed_looking_tags: set[str] | None = None,
+    ) -> tuple[dict[str, Any] | None, list[discord.ForumTag] | None]:
         character = await self.repo.find_by_thread_id(thread.id)
         if not character:
-            return
+            return None, None
         parent = thread.parent
         desired_tags = None
         if isinstance(parent, discord.ForumChannel):
@@ -693,6 +816,7 @@ class CardmakerCog(commands.Cog):
                 preferred_looking=preferred_looking,
                 preferred_type=preferred_type if allow_type_sync else None,
                 preserve_current_type=allow_type_sync,
+                suppressed_looking_tags=suppressed_looking_tags,
             )
             current_ids = {tag.id for tag in thread.applied_tags}
             desired_ids = {tag.id for tag in desired_tags}
@@ -728,7 +852,7 @@ class CardmakerCog(commands.Cog):
             updates["type"] = found_type
             updates["discord.starter_body"] = None
         if not updates:
-            return
+            return character, desired_tags
         updated = await self.repo.update_fields(
             character["_id"],
             updates,
@@ -737,6 +861,7 @@ class CardmakerCog(commands.Cog):
         )
         if updated and allow_type_sync and found_type:
             await self.refresh_thread_from_character(thread, updated, actor_id=actor_id)
+        return updated or character, desired_tags
 
     @commands.Cog.listener()
     async def on_thread_update(self, before: discord.Thread, after: discord.Thread):
